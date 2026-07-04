@@ -122,6 +122,51 @@ def test_pending_review_only_returns_items_with_photos_not_completed(tmp_path):
     assert client.get("/api/admin/pending", headers={"x-admin-password": "123456"}).json() == []
 
 
+def test_admin_month_counts_completed_and_pending_items(tmp_path):
+    client = make_client(tmp_path)
+    child = client.get("/api/children").json()[0]
+    first = client.post(
+        "/api/admin/homework",
+        json={
+            "child_id": child["id"],
+            "date": "2026-07-04",
+            "subject": "\u8bed\u6587",
+            "content": "\u4f5c\u6587",
+        },
+        headers={"x-admin-password": "123456"},
+    ).json()
+    second = client.post(
+        "/api/admin/homework",
+        json={
+            "child_id": child["id"],
+            "date": "2026-07-04",
+            "subject": "\u6570\u5b66",
+            "content": "\u53e3\u7b97",
+        },
+        headers={"x-admin-password": "123456"},
+    ).json()
+
+    client.post(
+        f"/api/homework/{first['id']}/photos",
+        files={"file": ("work.jpg", BytesIO(b"bytes"), "image/jpeg")},
+    )
+    client.patch(
+        f"/api/admin/homework/{second['id']}/completion",
+        json={"is_completed": True},
+        headers={"x-admin-password": "123456"},
+    )
+
+    month = client.get(
+        "/api/admin/month",
+        params={"year": 2026, "month": 7},
+        headers={"x-admin-password": "123456"},
+    ).json()
+
+    assert month["year"] == 2026
+    assert month["month"] == 7
+    assert month["days"] == [{"date": "2026-07-04", "total": 2, "completed": 1, "pending": 1}]
+
+
 def test_admin_can_rename_child(tmp_path):
     client = make_client(tmp_path)
     child = client.get("/api/children").json()[0]

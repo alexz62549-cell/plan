@@ -415,6 +415,29 @@ def create_app(
             result.append({"child": {"id": child.id, "name": child.name}, "subjects": group_by_subject(items)})
         return {"date": date.isoformat(), "children": result}
 
+    @app.get("/api/admin/month", dependencies=[Depends(require_admin)])
+    def admin_month(year: int, month: int, db: Session = Depends(get_db)):
+        if month < 1 or month > 12:
+            raise HTTPException(status_code=400, detail="Month must be between 1 and 12")
+        start = DateType(year, month, 1)
+        next_month = DateType(year + 1, 1, 1) if month == 12 else DateType(year, month + 1, 1)
+        items = db.scalars(
+            select(HomeworkItem)
+            .where(HomeworkItem.date >= start, HomeworkItem.date < next_month)
+            .order_by(HomeworkItem.date, HomeworkItem.child_id, HomeworkItem.subject_order, HomeworkItem.item_order)
+        ).all()
+        days: dict[str, dict[str, int | str]] = {}
+        for item in items:
+            key = item.date.isoformat()
+            if key not in days:
+                days[key] = {"date": key, "total": 0, "completed": 0, "pending": 0}
+            days[key]["total"] = int(days[key]["total"]) + 1
+            if item.is_completed:
+                days[key]["completed"] = int(days[key]["completed"]) + 1
+            elif item.photos:
+                days[key]["pending"] = int(days[key]["pending"]) + 1
+        return {"year": year, "month": month, "days": list(days.values())}
+
     @app.get("/api/admin/pending", dependencies=[Depends(require_admin)])
     def pending_review(db: Session = Depends(get_db)):
         items = db.scalars(

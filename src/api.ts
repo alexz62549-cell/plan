@@ -8,6 +8,19 @@ export type AdminDateResponse = {
   }>;
 };
 
+export type AdminMonthDay = {
+  date: string;
+  total: number;
+  completed: number;
+  pending: number;
+};
+
+export type AdminMonthResponse = {
+  year: number;
+  month: number;
+  days: AdminMonthDay[];
+};
+
 export async function requestJson<T>(url: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(url, options);
   if (!response.ok) {
@@ -48,6 +61,10 @@ export const api = {
     }),
   adminDate: (date: string, password: string) =>
     requestJson<AdminDateResponse>(`/api/admin/date?date=${date}`, {
+      headers: { 'x-admin-password': password }
+    }),
+  adminMonth: (year: number, month: number, password: string) =>
+    requestJson<AdminMonthResponse>(`/api/admin/month?year=${year}&month=${month}`, {
       headers: { 'x-admin-password': password }
     }),
   pending: (password: string) =>
