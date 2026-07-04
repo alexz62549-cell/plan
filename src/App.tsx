@@ -4,6 +4,7 @@ import { api, type AdminDateResponse } from './api';
 import { AdminHome } from './components/AdminHome';
 import { ChildHome } from './components/ChildHome';
 import { PhotoViewer } from './components/PhotoViewer';
+import { todayString } from './domain/dateNav';
 import { getAppModeFromPath } from './domain/navigation';
 import type { ManualPlanRow } from './domain/manualPlan';
 import type { Child, HomeworkDay, HomeworkItem, Photo } from './domain/types';
@@ -30,10 +31,6 @@ const M = {
   deleteHomeworkConfirm: '\u8fd9\u9879\u4f5c\u4e1a\u5df2\u6709\u7167\u7247\uff0c\u4ecd\u8981\u5220\u9664\uff1f',
   rowsAdded: '\u5df2\u6dfb\u52a0'
 };
-
-function todayString() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export default function App() {
   const mode = getAppModeFromPath(window.location.pathname);

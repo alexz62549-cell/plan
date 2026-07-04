@@ -1,20 +1,24 @@
-import { Check, FileJson, Image as ImageIcon, ListChecks, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { CalendarDays, Check, ChevronLeft, ChevronRight, FileJson, Image as ImageIcon, ListChecks, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import type { AdminDateResponse } from '../api';
+import { shiftDate, todayString } from '../domain/dateNav';
 import { normalizeManualPlanRows, type ManualPlanRow } from '../domain/manualPlan';
 import type { Child, HomeworkItem, Photo } from '../domain/types';
 import { statusText } from '../domain/homework';
 
 const L = {
   appTitle: '\u6691\u5047\u4f5c\u4e1a\u7ba1\u7406',
-  byDate: '\u6309\u65e5\u671f\u67e5\u770b',
+  byDate: '\u4f5c\u4e1a\u7ba1\u7406',
   pending: '\u5f85\u5ba1\u6838',
   plan: '\u4f5c\u4e1a\u8ba1\u5212',
   jsonImport: 'JSON\u5bfc\u5165',
+  previousDay: '\u524d\u4e00\u5929',
+  nextDay: '\u540e\u4e00\u5929',
+  today: '\u4eca\u5929',
   password: '\u5bb6\u957f\u5bc6\u7801',
   defaultPassword: '\u9ed8\u8ba4 123456',
-  localNote: '\u672c\u5730\u8c03\u8bd5\u7248\u672c\uff0c\u6570\u636e\u5b58\u5728\u672c\u673a SQLite \u548c uploads \u76ee\u5f55\u3002',
+  localNote: '\u6309\u65e5\u671f\u7ba1\u7406\u5df2\u5b89\u6392\u7684\u4f5c\u4e1a\uff0c\u4e5f\u53ef\u4ee5\u5728\u8fd9\u91cc\u5220\u9664\u6216\u6807\u8bb0\u5b8c\u6210\u3002',
   noHomework: '\u8fd9\u5929\u6ca1\u6709\u4f5c\u4e1a',
   todaySummary: '\u4eca\u65e5\u6982\u89c8',
   todayCompleted: '\u4eca\u65e5\u5df2\u5b8c\u6210',
@@ -172,7 +176,7 @@ export function AdminHome({
             <h2>{activeTab === 'date' ? L.byDate : activeTab === 'pending' ? L.pending : activeTab === 'plan' ? L.plan : L.jsonImport}</h2>
             <p>{L.localNote}</p>
           </div>
-          <input type="date" value={date} onChange={(event) => onDateChange(event.target.value)} />
+          <DateNavigator date={date} onDateChange={onDateChange} />
         </header>
 
         {activeTab === 'date' ? (
@@ -293,6 +297,27 @@ export function AdminHome({
         ) : null}
       </main>
     </section>
+  );
+}
+
+function DateNavigator({ date, onDateChange }: { date: string; onDateChange: (date: string) => void }) {
+  return (
+    <div className="date-navigator">
+      <button type="button" aria-label={L.previousDay} onClick={() => onDateChange(shiftDate(date, -1))}>
+        <ChevronLeft size={17} />
+      </button>
+      <button type="button" onClick={() => onDateChange(todayString())}>
+        {L.today}
+      </button>
+      <label className="date-picker-button">
+        <CalendarDays size={16} />
+        <input type="date" value={date} onChange={(event) => onDateChange(event.target.value)} />
+        <span>{date}</span>
+      </label>
+      <button type="button" aria-label={L.nextDay} onClick={() => onDateChange(shiftDate(date, 1))}>
+        <ChevronRight size={17} />
+      </button>
+    </div>
   );
 }
 

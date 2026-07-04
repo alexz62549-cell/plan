@@ -366,6 +366,50 @@ p {
   margin-bottom: 22px;
 }
 
+.date-navigator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  border: 1px solid #d8e2df;
+  border-radius: 8px;
+  padding: 5px;
+  background: #fff;
+}
+
+.date-navigator button,
+.date-picker-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  border: 0;
+  border-radius: 7px;
+  padding: 8px 10px;
+  color: #24524d;
+  background: transparent;
+  font-weight: 700;
+}
+
+.date-navigator button:hover,
+.date-picker-button:hover {
+  background: #e8f7f3;
+}
+
+.date-picker-button {
+  position: relative;
+  min-width: 150px;
+  cursor: pointer;
+}
+
+.date-picker-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
 .admin-toolbar h2 {
   margin-bottom: 4px;
   font-size: 26px;
@@ -670,6 +714,16 @@ p {
 
   .admin-main {
     padding: 20px 14px 88px;
+  }
+
+  .admin-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .date-navigator {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .admin-grid,

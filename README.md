@@ -60,6 +60,22 @@ http://localhost:5173/admin
 }
 ```
 
+## 服务器用 Git 更新
+
+首次克隆后，后续更新可以在服务器目录执行：
+
+```bash
+cd /home/agentuser/apps/homework
+git pull
+npm install
+npm run build
+. .venv/bin/activate
+pip install -r backend/requirements.txt
+sudo systemctl restart homework
+```
+
+如果当前服务器还是 zip 部署，可以继续上传 `deploy/homework-release.zip` 覆盖。
+
 ## 自检命令
 
 ```powershell
