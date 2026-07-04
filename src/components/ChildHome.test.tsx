@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChildHome } from './ChildHome';
 import type { Child, HomeworkDay } from '../domain/types';
@@ -52,6 +52,19 @@ const day: HomeworkDay = {
   summary: { total: 2, completed: 1, pending: 1 }
 };
 
+beforeEach(() => {
+  vi.stubGlobal('URL', {
+    ...URL,
+    createObjectURL: vi.fn(() => 'blob:test-photo'),
+    revokeObjectURL: vi.fn()
+  });
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
 describe('ChildHome', () => {
   it('shows active homework by subject and keeps completed homework collapsed', async () => {
     render(
@@ -62,7 +75,7 @@ describe('ChildHome', () => {
         day={day}
         onChildChange={vi.fn()}
         onDateChange={vi.fn()}
-        onUpload={vi.fn()}
+        onUpload={vi.fn().mockResolvedValue(undefined)}
         onDeletePhoto={vi.fn()}
         onPreview={vi.fn()}
       />
@@ -73,5 +86,32 @@ describe('ChildHome', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /已完成 1 项/ }));
     expect(screen.getByText('阅读 20 分钟')).toBeInTheDocument();
+  });
+
+  it('requires submitting selected photos before upload is called', async () => {
+    const upload = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ChildHome
+        children={children}
+        currentChildId={1}
+        date="2026-07-04"
+        day={day}
+        onChildChange={vi.fn()}
+        onDateChange={vi.fn()}
+        onUpload={upload}
+        onDeletePhoto={vi.fn()}
+        onPreview={vi.fn()}
+      />
+    );
+
+    const input = screen.getByLabelText('选择照片作文草稿') as HTMLInputElement;
+    const file = new File(['fake'], 'work.jpg', { type: 'image/jpeg' });
+    await userEvent.upload(input, file);
+
+    expect(upload).not.toHaveBeenCalled();
+    expect(screen.getByText(/待提交照片/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /提交照片/ }));
+    expect(upload).toHaveBeenCalledWith(expect.objectContaining({ content: '作文草稿' }), [file]);
   });
 });

@@ -253,6 +253,12 @@ p {
   background: #0f766e;
 }
 
+.upload-button.secondary-upload {
+  color: #0f5f59;
+  border-color: #b7e5db;
+  background: #e8f7f3;
+}
+
 .upload-button input {
   display: none;
 }
@@ -306,6 +312,41 @@ p {
 
 .completed-block {
   margin-top: 20px;
+}
+
+.pending-upload-box {
+  margin-top: 12px;
+  border: 1px solid #b7e5db;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f2fbf8;
+}
+
+.pending-upload-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #0f5f59;
+  font-weight: 800;
+}
+
+.submit-photos-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #0f766e;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #fff;
+  background: #0f766e;
+  font-weight: 800;
+}
+
+.submit-photos-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .completed-toggle {

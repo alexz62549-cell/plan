@@ -97,7 +97,7 @@ export default function App() {
     await Promise.all([loadChildDay(), mode === 'admin' ? loadAdmin() : Promise.resolve()]);
   }, [loadAdmin, loadChildDay, mode]);
 
-  async function handleUpload(item: HomeworkItem, files: FileList) {
+  async function handleUpload(item: HomeworkItem, files: File[]) {
     setMessage(M.uploading);
     try {
       for (const file of Array.from(files)) {
@@ -108,6 +108,7 @@ export default function App() {
       await refreshAll();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : M.uploadFailed);
+      throw error;
     }
   }
 
