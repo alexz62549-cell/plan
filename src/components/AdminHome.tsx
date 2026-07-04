@@ -29,6 +29,7 @@ const L = {
   monthTotal: '\u672c\u6708\u4f5c\u4e1a',
   monthCompleted: '\u672c\u6708\u5b8c\u6210',
   monthPending: '\u5f85\u5ba1\u7167\u7247',
+  manageLink: '\u4f5c\u4e1a\u7ba1\u7406',
   weekday: ['\u65e5', '\u4e00', '\u4e8c', '\u4e09', '\u56db', '\u4e94', '\u516d']
 };
 
@@ -88,10 +89,15 @@ export function AdminHome({
           <h1>{L.appTitle}</h1>
           <p>{L.subTitle}</p>
         </div>
-        <label className="admin-password compact-password">
-          {L.password}
-          <input value={password} type="password" placeholder={L.defaultPassword} onChange={(event) => onPasswordChange(event.target.value)} />
-        </label>
+        <div className="admin-header-actions">
+          <a className="admin-mode-link" href="/admin/manage">
+            {L.manageLink}
+          </a>
+          <label className="admin-password compact-password">
+            {L.password}
+            <input value={password} type="password" placeholder={L.defaultPassword} onChange={(event) => onPasswordChange(event.target.value)} />
+          </label>
+        </div>
       </header>
 
       <DateNavigator date={date} onDateChange={onDateChange} />
