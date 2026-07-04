@@ -1,1 +1,13 @@
 .superpowers/
+node_modules/
+dist/
+data/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+vitest.config.js
+vitest.config.d.ts
+*.zip

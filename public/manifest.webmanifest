@@ -1,0 +1,9 @@
+{
+  "name": "暑假打卡",
+  "short_name": "暑假打卡",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f766e",
+  "icons": []
+}
