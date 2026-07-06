@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AdminManage } from './AdminManage';
 import type { AdminDateResponse } from '../api';
-import type { Child } from '../domain/types';
+import type { Child, HomeworkItem } from '../domain/types';
 
 const children: Child[] = [
   { id: 1, name: '\u4f55\u6587\u6770', display_order: 0 },
@@ -16,7 +16,7 @@ const dateData: AdminDateResponse = {
   children: children.map((child) => ({ child, subjects: [] }))
 };
 
-function renderManage(childList: Child[], onCreateHomeworks = vi.fn().mockResolvedValue(undefined)) {
+function renderManage(childList: Child[], onCreateHomeworks = vi.fn().mockResolvedValue(undefined), planItems: HomeworkItem[] = []) {
   return render(
     <AdminManage
       children={childList}
@@ -25,7 +25,7 @@ function renderManage(childList: Child[], onCreateHomeworks = vi.fn().mockResolv
       date="2026-07-06"
       onDateChange={vi.fn()}
       dateData={dateData}
-      planItems={[]}
+      planItems={planItems}
       pending={[]}
       importText=""
       onImportTextChange={vi.fn()}
@@ -95,5 +95,31 @@ describe('AdminManage', () => {
     expect(onCreateHomeworks).toHaveBeenCalledWith([
       { child_id: 1, date: '2026-07-06', subject: '\u5916\u8bed', content: 'listen' }
     ]);
+  });
+
+  it('shows plan status without completion actions in the plan overview', async () => {
+    const planItems: HomeworkItem[] = [
+      {
+        id: 101,
+        child_id: 1,
+        child_name: '\u4f55\u6587\u6770',
+        date: '2026-07-06',
+        subject: '\u8bed\u6587',
+        content: 'read',
+        is_completed: false,
+        status: 'not_submitted',
+        photo_count: 0,
+        photos: [],
+        subject_order: 0,
+        item_order: 0
+      }
+    ];
+    renderManage(children, vi.fn().mockResolvedValue(undefined), planItems);
+
+    await userEvent.click(screen.getByRole('button', { name: /\u4f5c\u4e1a\u8ba1\u5212/ }));
+
+    expect(screen.getByText('read')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /\u6807\u8bb0\u5b8c\u6210/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /\u6539\u4e3a\u672a\u5b8c\u6210/ })).not.toBeInTheDocument();
   });
 });

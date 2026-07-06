@@ -355,7 +355,7 @@ export function AdminManage({
                                       <div className="timeline-subject" key={`${childKey}-${subjectGroup.subject}`}>
                                         <h4>{subjectGroup.subject}</h4>
                                         {subjectGroup.items.map((item) => (
-                                          <AdminRow key={item.id} item={item} onDeleteHomework={onDeleteHomework} onSetCompleted={onSetCompleted} onPreviewPhoto={onPreviewPhoto} />
+                                          <AdminRow key={item.id} item={item} onDeleteHomework={onDeleteHomework} onSetCompleted={onSetCompleted} onPreviewPhoto={onPreviewPhoto} showCompletionAction={false} />
                                         ))}
                                       </div>
                                     ))}
@@ -446,12 +446,14 @@ function AdminRow({
   item,
   onDeleteHomework,
   onSetCompleted,
-  onPreviewPhoto
+  onPreviewPhoto,
+  showCompletionAction = true
 }: {
   item: HomeworkItem;
   onDeleteHomework: (item: HomeworkItem) => void;
   onSetCompleted: (item: HomeworkItem, completed: boolean) => void;
   onPreviewPhoto: (photos: Photo[], index: number, item?: HomeworkItem) => void;
+  showCompletionAction?: boolean;
 }) {
   return (
     <article className="admin-row">
@@ -470,15 +472,17 @@ function AdminRow({
         ))}
       </div>
       <div className="row-actions">
-        {item.is_completed ? (
-          <button type="button" onClick={() => onSetCompleted(item, false)}>
-            <RotateCcw size={16} /> {L.markIncomplete}
-          </button>
-        ) : (
-          <button className="primary-action" type="button" onClick={() => onSetCompleted(item, true)}>
-            <Check size={16} /> {L.markCompleted}
-          </button>
-        )}
+        {showCompletionAction ? (
+          item.is_completed ? (
+            <button type="button" onClick={() => onSetCompleted(item, false)}>
+              <RotateCcw size={16} /> {L.markIncomplete}
+            </button>
+          ) : (
+            <button className="primary-action" type="button" onClick={() => onSetCompleted(item, true)}>
+              <Check size={16} /> {L.markCompleted}
+            </button>
+          )
+        ) : null}
         <button type="button" onClick={() => onDeleteHomework(item)}>
           <Trash2 size={16} /> {L.delete}
         </button>
