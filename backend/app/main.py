@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, date as DateType, datetime
@@ -251,11 +252,12 @@ def generate_dictation_audio_file(word: str, hint: str | None, upload_root: Path
     try:
         subprocess.run(
             [
-                "edge-tts",
+                sys.executable,
+                "-m",
+                "edge_tts",
                 "--voice",
                 str(DICTATION_CONFIG["english_voice"]),
-                "--rate",
-                str(DICTATION_CONFIG["english_rate"]),
+                f"--rate={DICTATION_CONFIG['english_rate']}",
                 "--text",
                 text,
                 "--write-media",
@@ -311,6 +313,7 @@ def create_app(
         yield
 
     app = FastAPI(title="Summer Homework Check-in", lifespan=lifespan)
+    app.state.dictation_audio_generator = audio_generator
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -475,7 +478,7 @@ def create_app(
                 DictationWord(
                     word=word_payload.word.strip(),
                     hint=word_payload.hint.strip() if word_payload.hint else None,
-                    audio_path=audio_generator(word_payload.word.strip(), word_payload.hint.strip() if word_payload.hint else None),
+                    audio_path=app.state.dictation_audio_generator(word_payload.word.strip(), word_payload.hint.strip() if word_payload.hint else None),
                     word_order=index,
                 )
             )
@@ -483,6 +486,24 @@ def create_app(
         db.commit()
         db.refresh(item)
         return serialize_item(item)
+
+    @app.post("/api/admin/dictation/{item_id}/audio", dependencies=[Depends(require_admin)])
+    def regenerate_dictation_audio(item_id: int, db: Session = Depends(get_db)):
+        item = db.get(HomeworkItem, item_id)
+        if not item or not item.dictation:
+            raise HTTPException(status_code=404, detail="Dictation not found")
+        updated = 0
+        failed = 0
+        for word in sorted(item.dictation.words, key=lambda value: (value.word_order, value.id)):
+            audio_path = app.state.dictation_audio_generator(word.word, word.hint)
+            if audio_path:
+                word.audio_path = audio_path
+                updated += 1
+            else:
+                failed += 1
+        db.commit()
+        db.refresh(item)
+        return {"updated": updated, "failed": failed, "item": serialize_item(item)}
 
     @app.patch("/api/admin/homework/{item_id}", dependencies=[Depends(require_admin)])
     def update_homework(item_id: int, payload: HomeworkUpdate, db: Session = Depends(get_db)):

@@ -105,6 +105,11 @@ export const api = {
       body: JSON.stringify(payload)
     }),
   dictationAnswers: (itemId: number) => requestJson<DictationAssignment>(`/api/dictation/${itemId}/answers`),
+  regenerateDictationAudio: (itemId: number, password: string) =>
+    requestJson<{ updated: number; failed: number; item: HomeworkItem }>(`/api/admin/dictation/${itemId}/audio`, {
+      method: 'POST',
+      headers: { 'x-admin-password': password }
+    }),
   deleteHomework: (itemId: number, password: string) =>
     requestJson(`/api/admin/homework/${itemId}`, {
       method: 'DELETE',

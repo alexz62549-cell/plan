@@ -218,6 +218,11 @@ export default function App() {
             setMessage('\u542c\u5199\u4f5c\u4e1a\u5df2\u521b\u5efa\u3002');
             await refreshAll();
           }}
+          onRegenerateDictationAudio={async (item) => {
+            const result = await api.regenerateDictationAudio(item.id, adminPassword);
+            setMessage(`\u97f3\u9891\u5df2\u751f\u6210 ${result.updated} \u4e2a\uff0c\u5931\u8d25 ${result.failed} \u4e2a\u3002`);
+            await refreshAll();
+          }}
           onDeleteHomework={async (item) => {
             if (item.photo_count > 0 && !confirm(M.deleteHomeworkConfirm)) return;
             await api.deleteHomework(item.id, adminPassword);

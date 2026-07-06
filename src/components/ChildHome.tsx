@@ -31,15 +31,14 @@ const C = {
   restartDictation: '\u91cd\u65b0\u542c\u5199',
   showAnswers: '\u663e\u793a\u7b54\u6848',
   dictationProgress: '\u542c\u5199\u8fdb\u5ea6',
-  dictationNoWords: '\u8fd9\u7ec4\u542c\u5199\u8fd8\u6ca1\u6709\u5355\u8bcd'
+  dictationNoWords: '\u8fd9\u7ec4\u542c\u5199\u8fd8\u6ca1\u6709\u5355\u8bcd',
+  dictationAudioMissing: '\u97f3\u9891\u672a\u751f\u6210\uff0c\u8bf7\u5bb6\u957f\u5728\u4f5c\u4e1a\u8ba1\u5212\u91cc\u70b9\u51fb\u751f\u6210\u97f3\u9891'
 };
 
 type PendingPhoto = {
   file: File;
   url: string;
 };
-
-let activeSpeechUtterance: SpeechSynthesisUtterance | null = null;
 
 type Props = {
   children: Child[];
@@ -443,10 +442,10 @@ function DictationPanel({ item, onLoadAnswers }: { item: HomeworkItem; onLoadAns
   if (!dictation) return null;
   const words = dictation.words;
   const currentWord = words[currentIndex];
+  const currentAudioReady = Boolean(currentWord?.audio_url);
 
   const stopPlayback = () => {
     playRunRef.current += 1;
-    window.speechSynthesis?.cancel();
     setPlaying(false);
   };
 
@@ -503,6 +502,7 @@ function DictationPanel({ item, onLoadAnswers }: { item: HomeworkItem; onLoadAns
         </button>
       </div>
       {words.length === 0 ? <p className="muted">{C.dictationNoWords}</p> : null}
+      {words.length > 0 && !currentAudioReady ? <p className="muted">{C.dictationAudioMissing}</p> : null}
       {words.length > 0 ? (
         <div className="dictation-controls">
           <button type="button" onClick={() => setCurrentIndex((value) => Math.max(0, value - 1))}>
@@ -513,17 +513,17 @@ function DictationPanel({ item, onLoadAnswers }: { item: HomeworkItem; onLoadAns
               <Pause size={15} /> {C.pauseDictation}
             </button>
           ) : (
-            <button className="primary-action" type="button" onClick={() => startAuto(currentIndex)}>
+            <button className="primary-action" type="button" onClick={() => startAuto(currentIndex)} disabled={!currentAudioReady}>
               <Play size={15} /> {C.startDictation}
             </button>
           )}
-          <button type="button" onClick={replay}>
+          <button type="button" onClick={replay} disabled={!currentAudioReady}>
             <Volume2 size={15} /> {C.replayCurrent}
           </button>
           <button type="button" onClick={() => setCurrentIndex((value) => Math.min(words.length - 1, value + 1))}>
             <SkipForward size={15} /> {C.nextWord}
           </button>
-          <button type="button" onClick={() => startAuto(0)}>
+          <button type="button" onClick={() => startAuto(0)} disabled={!words.some((word) => word.audio_url)}>
             <RotateCcw size={15} /> {C.restartDictation}
           </button>
         </div>
@@ -555,40 +555,5 @@ function playAudioOrSpeech(word: DictationWord) {
       void audio.play().catch(() => resolve());
     });
   }
-  if (word.speech_text && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window) {
-    return new Promise<void>((resolve) => {
-      const utterance = new SpeechSynthesisUtterance(word.speech_text ?? '');
-      const voice = chooseDictationVoice();
-      if (voice) {
-        utterance.voice = voice;
-        utterance.lang = voice.lang;
-      } else {
-        utterance.lang = 'en-US';
-      }
-      utterance.rate = 0.95;
-      utterance.volume = 1;
-      utterance.onend = () => {
-        activeSpeechUtterance = null;
-        resolve();
-      };
-      utterance.onerror = () => {
-        activeSpeechUtterance = null;
-        resolve();
-      };
-      window.speechSynthesis.cancel();
-      activeSpeechUtterance = utterance;
-      window.speechSynthesis.speak(utterance);
-    });
-  }
   return Promise.resolve();
-}
-
-function chooseDictationVoice() {
-  const voices = window.speechSynthesis?.getVoices?.() ?? [];
-  return (
-    voices.find((voice) => voice.lang.toLowerCase().startsWith('en')) ??
-    voices.find((voice) => voice.name.toLowerCase().includes('english')) ??
-    voices[0] ??
-    null
-  );
 }

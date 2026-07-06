@@ -21,6 +21,8 @@ function renderManage(
   onCreateHomeworks = vi.fn().mockResolvedValue(undefined),
   planItems: HomeworkItem[] = [],
   onCreateDictation = vi.fn().mockResolvedValue(undefined)
+  ,
+  onRegenerateDictationAudio = vi.fn().mockResolvedValue(undefined)
 ) {
   return render(
     <AdminManage
@@ -40,6 +42,7 @@ function renderManage(
       onConfirmImport={vi.fn()}
       onCreateHomeworks={onCreateHomeworks}
       onCreateDictation={onCreateDictation}
+      onRegenerateDictationAudio={onRegenerateDictationAudio}
       onDeleteHomework={vi.fn()}
       onSetCompleted={vi.fn()}
       onRenameChild={vi.fn()}
@@ -74,6 +77,7 @@ describe('AdminManage', () => {
         onConfirmImport={vi.fn()}
         onCreateHomeworks={onCreateHomeworks}
         onCreateDictation={vi.fn()}
+        onRegenerateDictationAudio={vi.fn()}
         onDeleteHomework={vi.fn()}
         onSetCompleted={vi.fn()}
         onRenameChild={vi.fn()}
@@ -149,5 +153,48 @@ describe('AdminManage', () => {
         { word: 'music room', hint: '\u97f3\u4e50\u6559\u5ba4' }
       ]
     });
+  });
+
+  it('can request audio generation for dictation plan items', async () => {
+    const regenerate = vi.fn().mockResolvedValue(undefined);
+    const planItems: HomeworkItem[] = [
+      {
+        id: 201,
+        child_id: 1,
+        child_name: '\u4f55\u6587\u6770',
+        date: '2026-07-06',
+        subject: '\u5916\u8bed',
+        content: '\u82f1\u8bed\u542c\u5199',
+        is_completed: false,
+        status: 'not_submitted',
+        photo_count: 0,
+        photos: [],
+        subject_order: 2,
+        item_order: 0,
+        dictation: {
+          id: 1,
+          title: '\u82f1\u8bed\u542c\u5199',
+          config: {
+            repeat_each_word: 3,
+            pause_between_repeats_ms: 1200,
+            pause_between_words_ms: 6000,
+            play_hint: false,
+            hint_before_word: true,
+            english_voice: 'en-US-AriaNeural',
+            chinese_voice: 'zh-CN-XiaoxiaoNeural',
+            english_rate: '-5%',
+            chinese_rate: '+0%',
+            generate_audio_on_save: true
+          },
+          words: [{ index: 0, audio_url: null, speech_text: 'library' }]
+        }
+      }
+    ];
+    renderManage(children, vi.fn().mockResolvedValue(undefined), planItems, vi.fn().mockResolvedValue(undefined), regenerate);
+
+    await userEvent.click(screen.getByRole('button', { name: /\u4f5c\u4e1a\u8ba1\u5212/ }));
+    await userEvent.click(screen.getByRole('button', { name: /\u751f\u6210\u97f3\u9891/ }));
+
+    expect(regenerate).toHaveBeenCalledWith(planItems[0]);
   });
 });

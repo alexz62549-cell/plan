@@ -167,26 +167,6 @@ describe('ChildHome', () => {
       words: [{ index: 0, audio_url: null, speech_text: 'library', word: 'library', hint: '\u56fe\u4e66\u9986' }]
     };
     const loadAnswers = vi.fn().mockResolvedValue(answers);
-    const speak = vi.fn((utterance: SpeechSynthesisUtterance) => {
-      utterance.onend?.(new Event('end') as SpeechSynthesisEvent);
-    });
-    const fallbackVoice = { name: 'Microsoft Huihui', lang: 'zh-CN' } as SpeechSynthesisVoice;
-    class TestSpeechSynthesisUtterance extends EventTarget {
-      text: string;
-      lang = '';
-      rate = 1;
-      volume = 1;
-      voice: SpeechSynthesisVoice | null = null;
-      onend: ((event: SpeechSynthesisEvent) => void) | null = null;
-      onerror: ((event: SpeechSynthesisErrorEvent) => void) | null = null;
-
-      constructor(text: string) {
-        super();
-        this.text = text;
-      }
-    }
-    vi.stubGlobal('SpeechSynthesisUtterance', TestSpeechSynthesisUtterance);
-    vi.stubGlobal('speechSynthesis', { cancel: vi.fn(), getVoices: vi.fn(() => [fallbackVoice]), speak });
 
     render(
       <ChildHome
@@ -210,8 +190,8 @@ describe('ChildHome', () => {
     expect(screen.getByRole('heading', { name: '\u82f1\u8bed\u542c\u5199\uff1a\u7b2c1\u7ec4' })).toBeInTheDocument();
     expect(screen.getByText(/\u542c\u5199\u8fdb\u5ea6/)).toBeInTheDocument();
     expect(screen.getByLabelText('\u9009\u62e9\u7167\u7247\u82f1\u8bed\u542c\u5199\uff1a\u7b2c1\u7ec4')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: /\u91cd\u64ad\u5f53\u524d/ }));
-    expect(speak).toHaveBeenCalledWith(expect.objectContaining({ text: 'library', lang: 'zh-CN', rate: 0.95, voice: fallbackVoice }));
+    expect(screen.getByText(/\u97f3\u9891\u672a\u751f\u6210/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /\u91cd\u64ad\u5f53\u524d/ })).toBeDisabled();
     await userEvent.click(screen.getByRole('button', { name: /\u663e\u793a\u7b54\u6848/ }));
 
     expect(loadAnswers).toHaveBeenCalledWith(expect.objectContaining({ id: 8 }));

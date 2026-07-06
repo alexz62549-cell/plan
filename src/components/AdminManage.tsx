@@ -1,4 +1,4 @@
-import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, FileJson, Image as ImageIcon, ListChecks, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, FileJson, Image as ImageIcon, ListChecks, Plus, RotateCcw, Trash2, Volume2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import type { AdminDateResponse } from '../api';
@@ -48,6 +48,7 @@ const L = {
   importHint: '\u5148\u7c98\u8d34 AI \u751f\u6210\u7684 JSON\uff0c\u518d\u6821\u9a8c\u9884\u89c8\u3002',
   markCompleted: '\u6807\u8bb0\u5b8c\u6210',
   markIncomplete: '\u6539\u4e3a\u672a\u5b8c\u6210',
+  generateAudio: '\u751f\u6210\u97f3\u9891',
   delete: '\u5220\u9664',
   noPlanItems: '\u5f53\u6708\u8fd8\u6ca1\u6709\u4f5c\u4e1a\u8ba1\u5212',
   collapse: '\u6536\u8d77',
@@ -104,6 +105,7 @@ export function AdminManage({
   onConfirmImport,
   onCreateHomeworks,
   onCreateDictation,
+  onRegenerateDictationAudio,
   onDeleteHomework,
   onSetCompleted,
   onRenameChild,
@@ -125,6 +127,7 @@ export function AdminManage({
   onConfirmImport: () => void;
   onCreateHomeworks: (rows: ManualPlanRow[]) => Promise<void>;
   onCreateDictation: (payload: DictationCreatePayload) => Promise<void>;
+  onRegenerateDictationAudio: (item: HomeworkItem) => Promise<void>;
   onDeleteHomework: (item: HomeworkItem) => void;
   onSetCompleted: (item: HomeworkItem, completed: boolean) => void;
   onRenameChild: (child: Child, name: string) => void;
@@ -256,7 +259,7 @@ export function AdminManage({
                     <div className="admin-subject" key={`${childBlock.child.id}-${group.subject}`}>
                       <div className="admin-subject-title">{group.subject}</div>
                       {group.items.map((item) => (
-                        <AdminRow key={item.id} item={item} onDeleteHomework={onDeleteHomework} onSetCompleted={onSetCompleted} onPreviewPhoto={onPreviewPhoto} />
+                        <AdminRow key={item.id} item={item} onDeleteHomework={onDeleteHomework} onSetCompleted={onSetCompleted} onPreviewPhoto={onPreviewPhoto} onRegenerateDictationAudio={onRegenerateDictationAudio} />
                       ))}
                     </div>
                   ))}
@@ -281,7 +284,7 @@ export function AdminManage({
           <section className="admin-section">
             {pending.length === 0 ? <p className="muted">{L.noPending}</p> : null}
             {pending.map((item) => (
-              <AdminRow key={item.id} item={item} onDeleteHomework={onDeleteHomework} onSetCompleted={onSetCompleted} onPreviewPhoto={onPreviewPhoto} />
+              <AdminRow key={item.id} item={item} onDeleteHomework={onDeleteHomework} onSetCompleted={onSetCompleted} onPreviewPhoto={onPreviewPhoto} onRegenerateDictationAudio={onRegenerateDictationAudio} />
             ))}
           </section>
         ) : null}
@@ -418,7 +421,7 @@ export function AdminManage({
                                       <div className="timeline-subject" key={`${childKey}-${subjectGroup.subject}`}>
                                         <h4>{subjectGroup.subject}</h4>
                                         {subjectGroup.items.map((item) => (
-                                          <AdminRow key={item.id} item={item} onDeleteHomework={onDeleteHomework} onSetCompleted={onSetCompleted} onPreviewPhoto={onPreviewPhoto} showCompletionAction={false} />
+                                          <AdminRow key={item.id} item={item} onDeleteHomework={onDeleteHomework} onSetCompleted={onSetCompleted} onPreviewPhoto={onPreviewPhoto} onRegenerateDictationAudio={onRegenerateDictationAudio} showCompletionAction={false} />
                                         ))}
                                       </div>
                                     ))}
@@ -532,12 +535,14 @@ function AdminRow({
   item,
   onDeleteHomework,
   onSetCompleted,
+  onRegenerateDictationAudio,
   onPreviewPhoto,
   showCompletionAction = true
 }: {
   item: HomeworkItem;
   onDeleteHomework: (item: HomeworkItem) => void;
   onSetCompleted: (item: HomeworkItem, completed: boolean) => void;
+  onRegenerateDictationAudio: (item: HomeworkItem) => void;
   onPreviewPhoto: (photos: Photo[], index: number, item?: HomeworkItem) => void;
   showCompletionAction?: boolean;
 }) {
@@ -568,6 +573,11 @@ function AdminRow({
               <Check size={16} /> {L.markCompleted}
             </button>
           )
+        ) : null}
+        {item.dictation ? (
+          <button type="button" onClick={() => onRegenerateDictationAudio(item)}>
+            <Volume2 size={16} /> {L.generateAudio}
+          </button>
         ) : null}
         <button type="button" onClick={() => onDeleteHomework(item)}>
           <Trash2 size={16} /> {L.delete}

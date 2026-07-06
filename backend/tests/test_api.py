@@ -265,3 +265,43 @@ def test_admin_creates_dictation_and_child_fetches_hidden_words_then_answers(tmp
         {"index": 0, "word": "library", "hint": "\u56fe\u4e66\u9986"},
         {"index": 1, "word": "music room", "hint": "\u97f3\u4e50\u6559\u5ba4"},
     ]
+
+
+def test_admin_can_regenerate_dictation_audio_for_existing_assignment(tmp_path):
+    generated: list[tuple[str, str | None]] = []
+
+    def fake_audio(word: str, hint: str | None) -> str:
+        generated.append((word, hint))
+        return f"dictation/audio/{word.replace(' ', '-')}.mp3"
+
+    app = create_app(
+        database_url=f"sqlite:///{tmp_path / 'test.db'}",
+        upload_dir=tmp_path / "uploads",
+        admin_password="123456",
+        dictation_audio_generator=lambda _word, _hint: None,
+    )
+    client = TestClient(app)
+    child = client.get("/api/children").json()[0]
+    created = client.post(
+        "/api/admin/dictation",
+        json={
+            "child_id": child["id"],
+            "date": "2026-07-06",
+            "title": "\u82f1\u8bed\u542c\u5199",
+            "words": [{"word": "library", "hint": "\u56fe\u4e66\u9986"}],
+        },
+        headers={"x-admin-password": "123456"},
+    ).json()
+    assert created["dictation"]["words"][0]["audio_url"] is None
+
+    app.dependency_overrides = {}
+    app.state.dictation_audio_generator = fake_audio
+    regenerated = client.post(
+        f"/api/admin/dictation/{created['id']}/audio",
+        headers={"x-admin-password": "123456"},
+    )
+
+    assert regenerated.status_code == 200
+    assert generated == [("library", "\u56fe\u4e66\u9986")]
+    assert regenerated.json()["updated"] == 1
+    assert regenerated.json()["item"]["dictation"]["words"][0]["audio_url"] == "/uploads/dictation/audio/library.mp3"
