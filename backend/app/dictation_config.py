@@ -47,5 +47,5 @@ DICTATION_CONFIG = {
     # 是否在家长录入/导入单词后立即生成音频。
     # True：录入慢一点，但孩子端播放最稳定。
     # False：预留给以后“首次播放时再生成”的模式。
-    "generate_audio_on_save": True,
+    "generate_audio_on_save": False,
 }

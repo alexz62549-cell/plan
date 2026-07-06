@@ -249,11 +249,13 @@ def test_admin_creates_dictation_and_child_fetches_hidden_words_then_answers(tmp
     assert item["dictation"]["title"] == "\u82f1\u8bed\u542c\u5199\uff1a\u7b2c1\u7ec4"
     assert [word["index"] for word in item["dictation"]["words"]] == [0, 1]
     assert "word" not in item["dictation"]["words"][0]
+    assert item["dictation"]["words"][0]["speech_text"] == "library"
 
     day = client.get("/api/homework", params={"childId": child["id"], "date": "2026-07-06"}).json()
     dictation_item = day["subjects"][0]["items"][0]
     assert dictation_item["content"] == "\u82f1\u8bed\u542c\u5199\uff1a\u7b2c1\u7ec4"
     assert "word" not in dictation_item["dictation"]["words"][0]
+    assert dictation_item["dictation"]["words"][1]["speech_text"] == "music room"
 
     answers = client.get(f"/api/dictation/{dictation_item['id']}/answers").json()
     assert [

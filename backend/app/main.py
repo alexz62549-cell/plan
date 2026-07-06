@@ -184,6 +184,7 @@ def serialize_dictation(assignment: DictationAssignment | None, *, include_answe
         payload: dict[str, Any] = {
             "index": index,
             "audio_url": audio_url,
+            "speech_text": word.word,
         }
         if include_answers:
             payload["word"] = word.word

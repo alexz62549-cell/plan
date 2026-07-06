@@ -24,6 +24,7 @@ export type DictationConfig = {
 export type DictationWord = {
   index: number;
   audio_url: string | null;
+  speech_text?: string;
   word?: string;
   hint?: string | null;
 };

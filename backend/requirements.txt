@@ -2,4 +2,3 @@ fastapi
 uvicorn[standard]
 sqlalchemy
 python-multipart
-edge-tts

@@ -444,6 +444,7 @@ function DictationPanel({ item, onLoadAnswers }: { item: HomeworkItem; onLoadAns
 
   const stopPlayback = () => {
     playRunRef.current += 1;
+    window.speechSynthesis?.cancel();
     setPlaying(false);
   };
 
@@ -550,6 +551,17 @@ function playAudioOrSpeech(word: DictationWord) {
       audio.onended = () => resolve();
       audio.onerror = () => resolve();
       void audio.play().catch(() => resolve());
+    });
+  }
+  if (word.speech_text && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window) {
+    return new Promise<void>((resolve) => {
+      const utterance = new SpeechSynthesisUtterance(word.speech_text ?? '');
+      utterance.lang = 'en-US';
+      utterance.rate = 0.95;
+      utterance.onend = () => resolve();
+      utterance.onerror = () => resolve();
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
     });
   }
   return Promise.resolve();
