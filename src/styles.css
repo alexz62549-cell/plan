@@ -263,6 +263,66 @@ p {
   display: none;
 }
 
+.dictation-entry-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  margin-top: 12px;
+  border: 1px solid #b7e5db;
+  border-radius: 8px;
+  padding: 11px 12px;
+  color: #0f5f59;
+  background: #f2fbf8;
+  font-weight: 800;
+}
+
+.dictation-detail-shell {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.dictation-back-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  gap: 7px;
+  border: 1px solid #d8e2df;
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: #24524d;
+  background: #fff;
+  font-weight: 800;
+}
+
+.dictation-detail-header {
+  display: grid;
+  gap: 8px;
+}
+
+.dictation-detail-header h1 {
+  margin: 0;
+  font-size: 23px;
+  line-height: 1.25;
+}
+
+.dictation-detail-header p {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 0;
+  color: #6b7f7a;
+  font-size: 13px;
+}
+
+.dictation-upload-button,
+.dictation-lock-chip {
+  width: 100%;
+}
+
 .lock-chip {
   color: #58706b;
   background: #edf2f1;

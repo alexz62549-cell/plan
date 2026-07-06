@@ -1,4 +1,4 @@
-import { Camera, CalendarDays, ChevronDown, ChevronUp, Eye, Image as ImageIcon, Lock, Pause, Play, RotateCcw, Send, SkipBack, SkipForward, Trash2, Volume2 } from 'lucide-react';
+import { ArrowLeft, Camera, CalendarDays, ChevronDown, ChevronUp, Eye, Image as ImageIcon, Lock, Pause, Play, RotateCcw, Send, SkipBack, SkipForward, Trash2, Volume2 } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 
 import { splitVisibleAndCompleted, statusText, summarizeHomework } from '../domain/homework';
@@ -20,6 +20,8 @@ const C = {
   locked: '\u5df2\u9501\u5b9a',
   deletePhoto: '\u5220\u9664\u7167\u7247'
   ,
+  enterDictation: '\u8fdb\u5165\u542c\u5199',
+  backToList: '\u8fd4\u56de\u5217\u8868',
   startDictation: '\u5f00\u59cb\u542c\u5199',
   pauseDictation: '\u6682\u505c',
   resumeDictation: '\u7ee7\u7eed',
@@ -67,6 +69,7 @@ export function ChildHome({
   const [completedOpen, setCompletedOpen] = useState(false);
   const [pendingByItem, setPendingByItem] = useState<Record<number, PendingPhoto[]>>({});
   const [submittingItemId, setSubmittingItemId] = useState<number | null>(null);
+  const [selectedDictationItem, setSelectedDictationItem] = useState<HomeworkItem | null>(null);
   const split = useMemo(() => splitVisibleAndCompleted(day?.subjects ?? []), [day]);
   const summary = useMemo(() => summarizeHomework(day?.subjects ?? []), [day]);
 
@@ -99,6 +102,23 @@ export function ChildHome({
       setSubmittingItemId(null);
     }
   };
+
+  if (selectedDictationItem) {
+    return (
+      <DictationDetail
+        item={selectedDictationItem}
+        pendingPhotos={pendingByItem[selectedDictationItem.id] ?? []}
+        submitting={submittingItemId === selectedDictationItem.id}
+        onBack={() => setSelectedDictationItem(null)}
+        onPickPhotos={addPending}
+        onRemovePending={removePending}
+        onSubmit={submitPending}
+        onDeletePhoto={onDeletePhoto}
+        onPreview={onPreview}
+        onLoadDictationAnswers={onLoadDictationAnswers}
+      />
+    );
+  }
 
   return (
     <section className="child-shell">
@@ -151,7 +171,7 @@ export function ChildHome({
                   onSubmit={submitPending}
                   onDeletePhoto={onDeletePhoto}
                   onPreview={onPreview}
-                  onLoadDictationAnswers={onLoadDictationAnswers}
+                  onOpenDictation={setSelectedDictationItem}
                 />
               ))}
             </div>
@@ -180,7 +200,7 @@ export function ChildHome({
                   onSubmit={submitPending}
                   onDeletePhoto={onDeletePhoto}
                   onPreview={onPreview}
-                  onLoadDictationAnswers={onLoadDictationAnswers}
+                  onOpenDictation={setSelectedDictationItem}
                 />
               ))}
             </div>
@@ -200,7 +220,7 @@ function HomeworkCard({
   onSubmit,
   onDeletePhoto,
   onPreview,
-  onLoadDictationAnswers
+  onOpenDictation
 }: {
   item: HomeworkItem;
   pendingPhotos: PendingPhoto[];
@@ -210,7 +230,7 @@ function HomeworkCard({
   onSubmit: (item: HomeworkItem) => void;
   onDeletePhoto: (photo: Photo) => void;
   onPreview: (photos: Photo[], index: number, item?: HomeworkItem) => void;
-  onLoadDictationAnswers: (item: HomeworkItem) => Promise<DictationAssignment>;
+  onOpenDictation: (item: HomeworkItem) => void;
 }) {
   const locked = item.status === 'completed';
 
@@ -247,8 +267,124 @@ function HomeworkCard({
         )}
       </div>
 
-      {item.dictation ? <DictationPanel item={item} onLoadAnswers={onLoadDictationAnswers} /> : null}
+      {item.dictation ? (
+        <button className="dictation-entry-button" type="button" onClick={() => onOpenDictation(item)}>
+          <Volume2 size={16} /> {C.enterDictation}
+        </button>
+      ) : null}
 
+      <PhotoUploadBlock
+        item={item}
+        locked={locked}
+        pendingPhotos={pendingPhotos}
+        submitting={submitting}
+        onRemovePending={onRemovePending}
+        onSubmit={onSubmit}
+        onDeletePhoto={onDeletePhoto}
+        onPreview={onPreview}
+      />
+    </article>
+  );
+}
+
+function DictationDetail({
+  item,
+  pendingPhotos,
+  submitting,
+  onBack,
+  onPickPhotos,
+  onRemovePending,
+  onSubmit,
+  onDeletePhoto,
+  onPreview,
+  onLoadDictationAnswers
+}: {
+  item: HomeworkItem;
+  pendingPhotos: PendingPhoto[];
+  submitting: boolean;
+  onBack: () => void;
+  onPickPhotos: (item: HomeworkItem, files: FileList) => void;
+  onRemovePending: (item: HomeworkItem, index: number) => void;
+  onSubmit: (item: HomeworkItem) => void;
+  onDeletePhoto: (photo: Photo) => void;
+  onPreview: (photos: Photo[], index: number, item?: HomeworkItem) => void;
+  onLoadDictationAnswers: (item: HomeworkItem) => Promise<DictationAssignment>;
+}) {
+  const locked = item.status === 'completed';
+
+  return (
+    <section className="child-shell dictation-detail-shell">
+      <button className="dictation-back-button" type="button" onClick={onBack}>
+        <ArrowLeft size={17} /> {C.backToList}
+      </button>
+
+      <header className="dictation-detail-header">
+        <span className={`status-badge ${item.status}`}>{statusText(item.status)}</span>
+        <h1>{item.content}</h1>
+        <p>
+          <ImageIcon size={14} /> {item.photo_count} {C.photoUnit}
+        </p>
+      </header>
+
+      {!locked ? (
+        <label className="upload-button dictation-upload-button">
+          <Camera size={17} />
+          {C.pickPhoto}
+          <input
+            aria-label={`${C.pickPhoto}${item.content}`}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            multiple
+            onChange={(event) => {
+              if (event.target.files?.length) onPickPhotos(item, event.target.files);
+              event.currentTarget.value = '';
+            }}
+          />
+        </label>
+      ) : (
+        <div className="lock-chip dictation-lock-chip">
+          <Lock size={15} /> {C.locked}
+        </div>
+      )}
+
+      <PhotoUploadBlock
+        item={item}
+        locked={locked}
+        pendingPhotos={pendingPhotos}
+        submitting={submitting}
+        onRemovePending={onRemovePending}
+        onSubmit={onSubmit}
+        onDeletePhoto={onDeletePhoto}
+        onPreview={onPreview}
+      />
+
+      <DictationPanel item={item} onLoadAnswers={onLoadDictationAnswers} />
+    </section>
+  );
+}
+
+function PhotoUploadBlock({
+  item,
+  locked,
+  pendingPhotos,
+  submitting,
+  onRemovePending,
+  onSubmit,
+  onDeletePhoto,
+  onPreview
+}: {
+  item: HomeworkItem;
+  locked: boolean;
+  pendingPhotos: PendingPhoto[];
+  submitting: boolean;
+  onRemovePending: (item: HomeworkItem, index: number) => void;
+  onSubmit: (item: HomeworkItem) => void;
+  onDeletePhoto: (photo: Photo) => void;
+  onPreview: (photos: Photo[], index: number, item?: HomeworkItem) => void;
+}) {
+  return (
+    <>
       {pendingPhotos.length > 0 ? (
         <div className="pending-upload-box">
           <div className="pending-upload-title">
@@ -290,7 +426,7 @@ function HomeworkCard({
           ))}
         </div>
       ) : null}
-    </article>
+    </>
   );
 }
 
