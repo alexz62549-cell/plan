@@ -1,5 +1,5 @@
 import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, FileJson, Image as ImageIcon, ListChecks, Plus, RotateCcw, Trash2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import type { AdminDateResponse } from '../api';
 import { groupPlanTimeline } from '../domain/adminPlan';
@@ -140,6 +140,19 @@ export function AdminManage({
   const updateRow = (index: number, patch: Partial<ManualPlanRow>) => {
     setManualRows((rows) => rows.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)));
   };
+
+  useEffect(() => {
+    const firstChildId = children[0]?.id ?? 0;
+    if (!firstChildId) return;
+    setManualRows((rows) =>
+      rows.map((row) => ({
+        ...row,
+        child_id: row.child_id || firstChildId,
+        date: row.date || date,
+        subject: row.subject || '\u8bed\u6587'
+      }))
+    );
+  }, [children, date]);
 
   const removeRow = (index: number) => {
     setManualRows((rows) => (rows.length === 1 ? emptyRows(children, date).slice(0, 1) : rows.filter((_, rowIndex) => rowIndex !== index)));
