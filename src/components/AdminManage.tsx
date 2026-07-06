@@ -1,7 +1,8 @@
-import { CalendarDays, Check, ChevronLeft, ChevronRight, FileJson, Image as ImageIcon, ListChecks, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, FileJson, Image as ImageIcon, ListChecks, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import type { AdminDateResponse } from '../api';
+import { groupPlanTimeline } from '../domain/adminPlan';
 import { shiftDate, todayString } from '../domain/dateNav';
 import { statusText } from '../domain/homework';
 import { normalizeManualPlanRows, type ManualPlanRow } from '../domain/manualPlan';
@@ -25,6 +26,9 @@ const L = {
   todayCompleted: '\u4eca\u65e5\u5df2\u5b8c\u6210',
   noPending: '\u6682\u65e0\u5f85\u5ba1\u6838\u7167\u7247',
   childNames: '\u5b69\u5b50\u540d\u79f0',
+  quickAdd: '\u5feb\u901f\u5f55\u5165',
+  planOverview: '\u8ba1\u5212\u603b\u89c8',
+  jumpDateNote: '\u53f3\u4e0a\u89d2\u65e5\u671f\u7528\u4e8e\u5b9a\u4f4d\u6708\u4efd\uff0c\u5e76\u4f5c\u4e3a\u65b0\u589e\u884c\u7684\u9ed8\u8ba4\u65e5\u671f\u3002',
   child: '\u5b69\u5b50',
   date: '\u65e5\u671f',
   subject: '\u5b66\u79d1',
@@ -40,6 +44,9 @@ const L = {
   markCompleted: '\u6807\u8bb0\u5b8c\u6210',
   markIncomplete: '\u6539\u4e3a\u672a\u5b8c\u6210',
   delete: '\u5220\u9664',
+  noPlanItems: '\u5f53\u6708\u8fd8\u6ca1\u6709\u4f5c\u4e1a\u8ba1\u5212',
+  collapse: '\u6536\u8d77',
+  expand: '\u5c55\u5f00',
   photoUnit: '\u5f20\u7167\u7247'
 };
 
@@ -80,6 +87,7 @@ export function AdminManage({
   date,
   onDateChange,
   dateData,
+  planItems,
   pending,
   importText,
   onImportTextChange,
@@ -99,6 +107,7 @@ export function AdminManage({
   date: string;
   onDateChange: (date: string) => void;
   dateData: AdminDateResponse | null;
+  planItems: HomeworkItem[];
   pending: HomeworkItem[];
   importText: string;
   onImportTextChange: (text: string) => void;
@@ -114,7 +123,10 @@ export function AdminManage({
 }) {
   const [activeTab, setActiveTab] = useState<'date' | 'pending' | 'plan' | 'import'>('date');
   const [manualRows, setManualRows] = useState<ManualPlanRow[]>(() => emptyRows(children, date));
+  const [openDates, setOpenDates] = useState<Record<string, boolean>>({});
+  const [openChildren, setOpenChildren] = useState<Record<string, boolean>>({});
   const [planMessage, setPlanMessage] = useState('');
+  const timeline = useMemo(() => groupPlanTimeline(planItems), [planItems]);
   const completedCount = useMemo(
     () =>
       dateData?.children.reduce(
@@ -127,6 +139,10 @@ export function AdminManage({
 
   const updateRow = (index: number, patch: Partial<ManualPlanRow>) => {
     setManualRows((rows) => rows.map((row, rowIndex) => (rowIndex === index ? { ...row, ...patch } : row)));
+  };
+
+  const removeRow = (index: number) => {
+    setManualRows((rows) => (rows.length === 1 ? emptyRows(children, date).slice(0, 1) : rows.filter((_, rowIndex) => rowIndex !== index)));
   };
 
   async function submitManualRows() {
@@ -225,48 +241,116 @@ export function AdminManage({
         ) : null}
 
         {activeTab === 'plan' ? (
-          <section className="admin-section">
-            <div className="child-settings">
-              <h3>{L.childNames}</h3>
-              {children.map((child) => (
-                <ChildNameEditor key={child.id} child={child} onRenameChild={onRenameChild} />
-              ))}
-            </div>
-            <div className="manual-plan-table">
-              <div className="manual-plan-head">
-                <span>{L.child}</span>
-                <span>{L.date}</span>
-                <span>{L.subject}</span>
-                <span>{L.content}</span>
+          <div className="plan-workspace">
+            <section className="admin-section">
+              <div className="child-settings">
+                <h3>{L.childNames}</h3>
+                {children.map((child) => (
+                  <ChildNameEditor key={child.id} child={child} onRenameChild={onRenameChild} />
+                ))}
               </div>
-              {manualRows.map((row, index) => (
-                <div className="manual-plan-row" key={index}>
-                  <select value={row.child_id} onChange={(event) => updateRow(index, { child_id: Number(event.target.value) })}>
-                    {children.map((child) => (
-                      <option value={child.id} key={child.id}>
-                        {child.name}
-                      </option>
-                    ))}
-                  </select>
-                  <input type="date" value={row.date} onChange={(event) => updateRow(index, { date: event.target.value })} />
-                  <input value={row.subject} placeholder={L.subject} onChange={(event) => updateRow(index, { subject: event.target.value })} />
-                  <input value={row.content} placeholder={L.content} onChange={(event) => updateRow(index, { content: event.target.value })} />
+              <div className="section-heading plan-heading">
+                <h3>{L.quickAdd}</h3>
+                <span>{L.jumpDateNote}</span>
+              </div>
+              <div className="manual-plan-table">
+                <div className="manual-plan-head">
+                  <span>{L.child}</span>
+                  <span>{L.date}</span>
+                  <span>{L.subject}</span>
+                  <span>{L.content}</span>
+                  <span>{L.delete}</span>
                 </div>
-              ))}
-            </div>
-            <div className="plan-actions">
-              <button type="button" onClick={() => setManualRows((rows) => [...rows, ...emptyRows(children, date).slice(0, 1)])}>
-                <Plus size={16} /> {L.addRow}
-              </button>
-              <button type="button" onClick={() => setManualRows(emptyRows(children, date))}>
-                {L.clearRows}
-              </button>
-              <button className="primary-action" type="button" onClick={submitManualRows}>
-                <Plus size={16} /> {L.batchAdd}
-              </button>
-            </div>
-            {planMessage ? <p className="form-message">{planMessage}</p> : null}
-          </section>
+                {manualRows.map((row, index) => (
+                  <div className="manual-plan-row" key={index}>
+                    <select value={row.child_id} onChange={(event) => updateRow(index, { child_id: Number(event.target.value) })}>
+                      {children.map((child) => (
+                        <option value={child.id} key={child.id}>
+                          {child.name}
+                        </option>
+                      ))}
+                    </select>
+                    <input type="date" value={row.date} onChange={(event) => updateRow(index, { date: event.target.value })} />
+                    <input value={row.subject} placeholder={L.subject} onChange={(event) => updateRow(index, { subject: event.target.value })} />
+                    <input value={row.content} placeholder={L.content} onChange={(event) => updateRow(index, { content: event.target.value })} />
+                    <button className="icon-danger-button" type="button" onClick={() => removeRow(index)} aria-label={`${L.delete}${index + 1}`}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="plan-actions">
+                <button type="button" onClick={() => setManualRows((rows) => [...rows, { ...(emptyRows(children, date)[0] ?? { child_id: children[0]?.id ?? 0, date, subject: '\u8bed\u6587', content: '' }), date }])}>
+                  <Plus size={16} /> {L.addRow}
+                </button>
+                <button type="button" onClick={() => setManualRows(emptyRows(children, date))}>
+                  {L.clearRows}
+                </button>
+                <button className="primary-action" type="button" onClick={submitManualRows}>
+                  <Plus size={16} /> {L.batchAdd}
+                </button>
+              </div>
+              {planMessage ? <p className="form-message">{planMessage}</p> : null}
+            </section>
+
+            <section className="admin-section">
+              <div className="section-heading">
+                <h3>{L.planOverview}</h3>
+                <span>{date.slice(0, 7)}</span>
+              </div>
+              {timeline.length === 0 ? <p className="muted">{L.noPlanItems}</p> : null}
+              <div className="plan-timeline">
+                {timeline.map((dateGroup) => {
+                  const dateOpen = openDates[dateGroup.date] ?? dateGroup.date === date;
+                  return (
+                    <div className="timeline-day" key={dateGroup.date}>
+                      <button className="timeline-day-toggle" type="button" onClick={() => setOpenDates((value) => ({ ...value, [dateGroup.date]: !dateOpen }))}>
+                        <span>
+                          {dateOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          <strong>{dateGroup.date}</strong>
+                        </span>
+                        <em>
+                          {dateGroup.completed}/{dateGroup.total}
+                          {dateGroup.pending > 0 ? ` · ${L.pending} ${dateGroup.pending}` : ''}
+                        </em>
+                      </button>
+                      {dateOpen ? (
+                        <div className="timeline-day-body">
+                          {dateGroup.children.map((childGroup) => {
+                            const childKey = `${dateGroup.date}-${childGroup.childId}`;
+                            const childOpen = openChildren[childKey] ?? true;
+                            return (
+                              <div className="timeline-child" key={childKey}>
+                                <button className="timeline-child-toggle" type="button" onClick={() => setOpenChildren((value) => ({ ...value, [childKey]: !childOpen }))}>
+                                  <span>
+                                    {childOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                                    {childGroup.childName}
+                                  </span>
+                                  <em>{childGroup.total}</em>
+                                </button>
+                                {childOpen ? (
+                                  <div className="timeline-child-body">
+                                    {childGroup.subjects.map((subjectGroup) => (
+                                      <div className="timeline-subject" key={`${childKey}-${subjectGroup.subject}`}>
+                                        <h4>{subjectGroup.subject}</h4>
+                                        {subjectGroup.items.map((item) => (
+                                          <AdminRow key={item.id} item={item} onDeleteHomework={onDeleteHomework} onSetCompleted={onSetCompleted} onPreviewPhoto={onPreviewPhoto} />
+                                        ))}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          </div>
         ) : null}
 
         {activeTab === 'import' ? (

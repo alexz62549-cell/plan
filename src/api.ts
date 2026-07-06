@@ -67,6 +67,10 @@ export const api = {
     requestJson<AdminMonthResponse>(`/api/admin/month?year=${year}&month=${month}`, {
       headers: { 'x-admin-password': password }
     }),
+  adminPlan: (start: string, end: string, password: string) =>
+    requestJson<HomeworkItem[]>(`/api/admin/plan?start=${start}&end=${end}`, {
+      headers: { 'x-admin-password': password }
+    }),
   pending: (password: string) =>
     requestJson<HomeworkItem[]>('/api/admin/pending', {
       headers: { 'x-admin-password': password }

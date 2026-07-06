@@ -842,7 +842,7 @@ p {
 .manual-plan-head,
 .manual-plan-row {
   display: grid;
-  grid-template-columns: 150px 160px 140px minmax(260px, 1fr);
+  grid-template-columns: 150px 160px 140px minmax(260px, 1fr) 52px;
   gap: 10px;
   align-items: center;
   min-width: 760px;
@@ -871,7 +871,8 @@ p {
   margin-top: 14px;
 }
 
-.plan-actions button {
+.plan-actions button,
+.icon-danger-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -882,6 +883,121 @@ p {
   color: #24524d;
   background: #fff;
   font-weight: 700;
+}
+
+.icon-danger-button {
+  width: 44px;
+  min-height: 42px;
+  color: #b42318;
+  border-color: #ffd6cc;
+  background: #fff7f5;
+}
+
+.plan-workspace {
+  display: grid;
+  gap: 18px;
+}
+
+.plan-heading {
+  align-items: flex-start;
+}
+
+.plan-heading span {
+  max-width: 720px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.plan-timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.timeline-day {
+  position: relative;
+  border-left: 3px solid #b7e5db;
+  padding-left: 14px;
+}
+
+.timeline-day::before {
+  position: absolute;
+  top: 17px;
+  left: -7px;
+  width: 11px;
+  height: 11px;
+  border: 2px solid #0f766e;
+  border-radius: 999px;
+  background: #fff;
+  content: "";
+}
+
+.timeline-day-toggle,
+.timeline-child-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 1px solid #dfe8e5;
+  border-radius: 8px;
+  padding: 11px 12px;
+  color: #172121;
+  background: #f9fbfa;
+  text-align: left;
+}
+
+.timeline-day-toggle span,
+.timeline-child-toggle span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-day-toggle em,
+.timeline-child-toggle em {
+  color: #0f5f59;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.timeline-day-body {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+  padding-bottom: 4px;
+}
+
+.timeline-child {
+  border: 1px solid #eef3f1;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.timeline-child-toggle {
+  border: 0;
+  background: #fff;
+}
+
+.timeline-child-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 12px 12px;
+}
+
+.timeline-subject {
+  display: grid;
+  gap: 6px;
+}
+
+.timeline-subject h4 {
+  margin: 0;
+  color: #0f5f59;
+}
+
+.timeline-subject .admin-row {
+  grid-template-columns: minmax(220px, 1fr) 120px auto;
+  border: 1px solid #eef3f1;
+  border-radius: 8px;
+  padding: 10px;
 }
 
 .form-message {
@@ -1049,6 +1165,10 @@ p {
     border: 1px solid #eef3f1;
     border-radius: 8px;
     padding: 10px;
+  }
+
+  .icon-danger-button {
+    width: 100%;
   }
 
   .row-actions {

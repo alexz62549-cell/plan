@@ -42,6 +42,7 @@ export default function App() {
   const [day, setDay] = useState<HomeworkDay | null>(null);
   const [adminDate, setAdminDate] = useState<AdminDateResponse | null>(null);
   const [adminMonth, setAdminMonth] = useState<AdminMonthResponse | null>(null);
+  const [adminPlanItems, setAdminPlanItems] = useState<HomeworkItem[]>([]);
   const [pending, setPending] = useState<HomeworkItem[]>([]);
   const [adminPassword, setAdminPassword] = useState(() => localStorage.getItem('adminPassword') || '123456');
   const [importText, setImportText] = useState('');
@@ -75,13 +76,17 @@ export default function App() {
     if (!adminPassword) return;
     try {
       const [year, month] = date.split('-').map(Number);
-      const [dateResult, monthResult, pendingResult] = await Promise.all([
+      const monthStart = `${year}-${String(month).padStart(2, '0')}-01`;
+      const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(new Date(year, month, 0).getDate()).padStart(2, '0')}`;
+      const [dateResult, monthResult, planResult, pendingResult] = await Promise.all([
         api.adminDate(date, adminPassword),
         api.adminMonth(year, month, adminPassword),
+        api.adminPlan(monthStart, monthEnd, adminPassword),
         api.pending(adminPassword)
       ]);
       setAdminDate(dateResult);
       setAdminMonth(monthResult);
+      setAdminPlanItems(planResult);
       setPending(pendingResult);
       localStorage.setItem('adminPassword', adminPassword);
     } catch (error) {
@@ -192,6 +197,7 @@ export default function App() {
           date={date}
           onDateChange={setDate}
           dateData={adminDate}
+          planItems={adminPlanItems}
           pending={pending}
           importText={importText}
           onImportTextChange={setImportText}

@@ -438,6 +438,17 @@ def create_app(
                 days[key]["pending"] = int(days[key]["pending"]) + 1
         return {"year": year, "month": month, "days": list(days.values())}
 
+    @app.get("/api/admin/plan", dependencies=[Depends(require_admin)])
+    def admin_plan(start: DateType, end: DateType, db: Session = Depends(get_db)):
+        if end < start:
+            raise HTTPException(status_code=400, detail="End date must be after start date")
+        items = db.scalars(
+            select(HomeworkItem)
+            .where(HomeworkItem.date >= start, HomeworkItem.date <= end)
+            .order_by(HomeworkItem.date, HomeworkItem.child_id, HomeworkItem.subject_order, HomeworkItem.subject, HomeworkItem.item_order, HomeworkItem.id)
+        ).all()
+        return [serialize_item(item) for item in items]
+
     @app.get("/api/admin/pending", dependencies=[Depends(require_admin)])
     def pending_review(db: Session = Depends(get_db)):
         items = db.scalars(

@@ -167,6 +167,35 @@ def test_admin_month_counts_completed_and_pending_items(tmp_path):
     assert month["days"] == [{"date": "2026-07-04", "total": 2, "completed": 1, "pending": 1}]
 
 
+def test_admin_plan_returns_items_for_month_range(tmp_path):
+    client = make_client(tmp_path)
+    child = client.get("/api/children").json()[0]
+    for date_value, content in [
+        ("2026-07-04", "\u4f5c\u6587"),
+        ("2026-07-05", "\u53e3\u7b97"),
+        ("2026-08-01", "\u4e0b\u6708\u4f5c\u4e1a"),
+    ]:
+        client.post(
+            "/api/admin/homework",
+            json={
+                "child_id": child["id"],
+                "date": date_value,
+                "subject": "\u8bed\u6587",
+                "content": content,
+            },
+            headers={"x-admin-password": "123456"},
+        )
+
+    plan = client.get(
+        "/api/admin/plan",
+        params={"start": "2026-07-01", "end": "2026-07-31"},
+        headers={"x-admin-password": "123456"},
+    ).json()
+
+    assert [item["date"] for item in plan] == ["2026-07-04", "2026-07-05"]
+    assert [item["content"] for item in plan] == ["\u4f5c\u6587", "\u53e3\u7b97"]
+
+
 def test_admin_can_rename_child(tmp_path):
     client = make_client(tmp_path)
     child = client.get("/api/children").json()[0]
