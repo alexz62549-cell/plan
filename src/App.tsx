@@ -188,6 +188,7 @@ export default function App() {
           onUpload={handleUpload}
           onDeletePhoto={handleDeletePhoto}
           onPreview={(photos, index, item) => setViewer({ photos, index, item })}
+          onLoadDictationAnswers={(item) => api.dictationAnswers(item.id)}
         />
       ) : mode === 'admin-manage' ? (
         <AdminManage
@@ -210,6 +211,11 @@ export default function App() {
               await api.createHomework(row, adminPassword);
             }
             setMessage(`${M.rowsAdded} ${rows.length} \u6761\u4f5c\u4e1a\u3002`);
+            await refreshAll();
+          }}
+          onCreateDictation={async (payload) => {
+            await api.createDictation(payload, adminPassword);
+            setMessage('\u542c\u5199\u4f5c\u4e1a\u5df2\u521b\u5efa\u3002');
             await refreshAll();
           }}
           onDeleteHomework={async (item) => {

@@ -33,6 +33,11 @@ const L = {
   date: '\u65e5\u671f',
   subject: '\u5b66\u79d1',
   content: '\u4f5c\u4e1a\u5185\u5bb9',
+  dictationTitle: '\u542c\u5199\u6807\u9898',
+  dictationWords: '\u542c\u5199\u5355\u8bcd',
+  dictationSection: '\u542c\u5199\u4f5c\u4e1a',
+  dictationHint: '\u6bcf\u884c\u4e00\u4e2a\u5355\u8bcd\u6216\u77ed\u8bed\uff0c\u53ef\u5728\u540e\u9762\u52a0\u4e2d\u6587\u63d0\u793a\uff1alibrary \u56fe\u4e66\u9986',
+  createDictation: '\u521b\u5efa\u542c\u5199',
   save: '\u4fdd\u5b58',
   addRow: '\u589e\u52a0\u4e00\u884c',
   batchAdd: '\u6279\u91cf\u6dfb\u52a0',
@@ -98,6 +103,7 @@ export function AdminManage({
   onPreviewImport,
   onConfirmImport,
   onCreateHomeworks,
+  onCreateDictation,
   onDeleteHomework,
   onSetCompleted,
   onRenameChild,
@@ -118,6 +124,7 @@ export function AdminManage({
   onPreviewImport: () => void;
   onConfirmImport: () => void;
   onCreateHomeworks: (rows: ManualPlanRow[]) => Promise<void>;
+  onCreateDictation: (payload: DictationCreatePayload) => Promise<void>;
   onDeleteHomework: (item: HomeworkItem) => void;
   onSetCompleted: (item: HomeworkItem, completed: boolean) => void;
   onRenameChild: (child: Child, name: string) => void;
@@ -128,6 +135,9 @@ export function AdminManage({
   const [openDates, setOpenDates] = useState<Record<string, boolean>>({});
   const [openChildren, setOpenChildren] = useState<Record<string, boolean>>({});
   const [planMessage, setPlanMessage] = useState('');
+  const [dictationChildId, setDictationChildId] = useState(() => children[0]?.id ?? 0);
+  const [dictationTitle, setDictationTitle] = useState('\u82f1\u8bed\u542c\u5199');
+  const [dictationWords, setDictationWords] = useState('');
   const timeline = useMemo(() => groupPlanTimeline(planItems), [planItems]);
   const completedCount = useMemo(
     () =>
@@ -146,6 +156,7 @@ export function AdminManage({
   useEffect(() => {
     const firstChildId = children[0]?.id ?? 0;
     if (!firstChildId) return;
+    setDictationChildId((value) => value || firstChildId);
     setManualRows((rows) =>
       rows.map((row) => ({
         ...row,
@@ -172,6 +183,26 @@ export function AdminManage({
       setManualRows(emptyRows(children, date));
     } catch (error) {
       setPlanMessage(error instanceof Error ? error.message : '\u6dfb\u52a0\u5931\u8d25');
+    }
+  }
+
+  async function submitDictation() {
+    try {
+      const words = parseDictationWords(dictationWords);
+      if (!dictationChildId || !dictationTitle.trim() || words.length === 0) {
+        setPlanMessage('\u8bf7\u586b\u5199\u542c\u5199\u6807\u9898\u548c\u5355\u8bcd\u3002');
+        return;
+      }
+      await onCreateDictation({
+        child_id: dictationChildId,
+        date,
+        title: dictationTitle.trim(),
+        words
+      });
+      setPlanMessage(`\u5df2\u521b\u5efa\u542c\u5199\uff0c\u5171 ${words.length} \u4e2a\u5355\u8bcd\u3002`);
+      setDictationWords('');
+    } catch (error) {
+      setPlanMessage(error instanceof Error ? error.message : '\u521b\u5efa\u542c\u5199\u5931\u8d25');
     }
   }
 
@@ -315,6 +346,38 @@ export function AdminManage({
             </section>
 
             <section className="admin-section">
+              <div className="section-heading plan-heading">
+                <h3>{L.dictationSection}</h3>
+                <span>{L.dictationHint}</span>
+              </div>
+              <div className="dictation-form">
+                <label>
+                  {L.child}
+                  <select value={dictationChildId} onChange={(event) => setDictationChildId(Number(event.target.value))}>
+                    {children.map((child) => (
+                      <option value={child.id} key={child.id}>
+                        {child.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  {L.dictationTitle}
+                  <input value={dictationTitle} onChange={(event) => setDictationTitle(event.target.value)} />
+                </label>
+                <label className="dictation-words-field">
+                  {L.dictationWords}
+                  <textarea value={dictationWords} onChange={(event) => setDictationWords(event.target.value)} placeholder={'library \u56fe\u4e66\u9986\nmusic room \u97f3\u4e50\u6559\u5ba4'} />
+                </label>
+              </div>
+              <div className="plan-actions">
+                <button className="primary-action" type="button" onClick={submitDictation}>
+                  <Plus size={16} /> {L.createDictation}
+                </button>
+              </div>
+            </section>
+
+            <section className="admin-section">
               <div className="section-heading">
                 <h3>{L.planOverview}</h3>
                 <span>{date.slice(0, 7)}</span>
@@ -406,6 +469,29 @@ export function AdminManage({
       </main>
     </section>
   );
+}
+
+type DictationCreatePayload = {
+  child_id: number;
+  date: string;
+  title: string;
+  words: Array<{ word: string; hint?: string }>;
+};
+
+function parseDictationWords(text: string): Array<{ word: string; hint?: string }> {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const parts = line.split(/\s+/);
+      const last = parts[parts.length - 1];
+      if (parts.length > 1 && /[\u4e00-\u9fff]/.test(last)) {
+        return { word: parts.slice(0, -1).join(' '), hint: last };
+      }
+      return { word: line };
+    })
+    .filter((item) => item.word);
 }
 
 function DateNavigator({ date, onDateChange }: { date: string; onDateChange: (date: string) => void }) {

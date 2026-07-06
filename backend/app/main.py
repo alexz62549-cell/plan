@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import subprocess
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, date as DateType, datetime
@@ -15,6 +16,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, create_engine, func, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, relationship, sessionmaker
+
+from .dictation_config import DICTATION_CONFIG
 
 
 DEFAULT_CHILDREN = ["\u5b89\u5b89", "\u4e50\u4e50"]
@@ -54,6 +57,7 @@ class HomeworkItem(Base):
 
     child: Mapped[Child] = relationship(back_populates="homework_items")
     photos: Mapped[list["Photo"]] = relationship(back_populates="homework_item", cascade="all, delete-orphan")
+    dictation: Mapped["DictationAssignment | None"] = relationship(back_populates="homework_item", cascade="all, delete-orphan")
 
 
 class Photo(Base):
@@ -67,6 +71,31 @@ class Photo(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
 
     homework_item: Mapped[HomeworkItem] = relationship(back_populates="photos")
+
+
+class DictationAssignment(Base):
+    __tablename__ = "dictation_assignments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    homework_item_id: Mapped[int] = mapped_column(ForeignKey("homework_items.id"), unique=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
+
+    homework_item: Mapped[HomeworkItem] = relationship(back_populates="dictation")
+    words: Mapped[list["DictationWord"]] = relationship(back_populates="assignment", cascade="all, delete-orphan")
+
+
+class DictationWord(Base):
+    __tablename__ = "dictation_words"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    assignment_id: Mapped[int] = mapped_column(ForeignKey("dictation_assignments.id"), nullable=False)
+    word: Mapped[str] = mapped_column(String(120), nullable=False)
+    hint: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    audio_path: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    word_order: Mapped[int] = mapped_column(Integer, default=0)
+
+    assignment: Mapped[DictationAssignment] = relationship(back_populates="words")
 
 
 class ImportItem(BaseModel):
@@ -112,6 +141,18 @@ class ChildUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=40)
 
 
+class DictationWordCreate(BaseModel):
+    word: str = Field(min_length=1, max_length=120)
+    hint: str | None = Field(default=None, max_length=160)
+
+
+class DictationCreate(BaseModel):
+    child_id: int
+    date: DateType
+    title: str = Field(min_length=1, max_length=120)
+    words: list[DictationWordCreate] = Field(min_length=1)
+
+
 def item_status(item: HomeworkItem) -> str:
     if item.is_completed:
         return "completed"
@@ -131,8 +172,33 @@ def serialize_photo(photo: Photo) -> dict[str, Any]:
     }
 
 
-def serialize_item(item: HomeworkItem) -> dict[str, Any]:
+def serialize_dictation(assignment: DictationAssignment | None, *, include_answers: bool = False) -> dict[str, Any] | None:
+    if not assignment:
+        return None
+    words = []
+    for index, word in enumerate(sorted(assignment.words, key=lambda item: (item.word_order, item.id))):
+        audio_url = None
+        if word.audio_path:
+            audio_path = word.audio_path.replace("\\", "/")
+            audio_url = f"/uploads/{audio_path}"
+        payload: dict[str, Any] = {
+            "index": index,
+            "audio_url": audio_url,
+        }
+        if include_answers:
+            payload["word"] = word.word
+            payload["hint"] = word.hint
+        words.append(payload)
     return {
+        "id": assignment.id,
+        "title": assignment.title,
+        "config": DICTATION_CONFIG,
+        "words": words,
+    }
+
+
+def serialize_item(item: HomeworkItem) -> dict[str, Any]:
+    payload = {
         "id": item.id,
         "child_id": item.child_id,
         "child_name": item.child.name,
@@ -146,6 +212,10 @@ def serialize_item(item: HomeworkItem) -> dict[str, Any]:
         "subject_order": item.subject_order,
         "item_order": item.item_order,
     }
+    dictation = serialize_dictation(item.dictation)
+    if dictation:
+        payload["dictation"] = dictation
+    return payload
 
 
 def group_by_subject(items: list[HomeworkItem]) -> list[dict[str, Any]]:
@@ -161,17 +231,58 @@ def group_by_subject(items: list[HomeworkItem]) -> list[dict[str, Any]]:
     return sorted(groups.values(), key=lambda group: (group["subject_order"], group["subject"]))
 
 
+def generate_dictation_audio_file(word: str, hint: str | None, upload_root: Path) -> str | None:
+    if not DICTATION_CONFIG["generate_audio_on_save"]:
+        return None
+    relative_dir = Path("dictation") / "audio"
+    target_dir = upload_root / relative_dir
+    target_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}.mp3"
+    relative_path = relative_dir / filename
+    target_path = upload_root / relative_path
+    text_parts = []
+    if DICTATION_CONFIG["play_hint"] and DICTATION_CONFIG["hint_before_word"] and hint:
+        text_parts.append(hint)
+    text_parts.append(word)
+    if DICTATION_CONFIG["play_hint"] and not DICTATION_CONFIG["hint_before_word"] and hint:
+        text_parts.append(hint)
+    text = ". ".join(text_parts)
+    try:
+        subprocess.run(
+            [
+                "edge-tts",
+                "--voice",
+                str(DICTATION_CONFIG["english_voice"]),
+                "--rate",
+                str(DICTATION_CONFIG["english_rate"]),
+                "--text",
+                text,
+                "--write-media",
+                str(target_path),
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return None
+    return relative_path.as_posix()
+
+
 def create_app(
     database_url: str = "sqlite:///./data/homework.db",
     upload_dir: str | Path = "./data/uploads",
     admin_password: str = "123456",
     frontend_dist: str | Path | None = "./dist",
+    dictation_audio_generator: Any | None = None,
 ) -> FastAPI:
     upload_root = Path(upload_dir)
     upload_root.mkdir(parents=True, exist_ok=True)
     engine = create_engine(database_url, connect_args={"check_same_thread": False})
     SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
     Base.metadata.create_all(engine)
+    audio_generator = dictation_audio_generator or (lambda word, hint: generate_dictation_audio_file(word, hint, upload_root))
 
     def get_db():
         db = SessionLocal()
@@ -330,6 +441,48 @@ def create_app(
         db.refresh(item)
         return serialize_item(item)
 
+    @app.post("/api/admin/dictation", dependencies=[Depends(require_admin)])
+    def create_dictation(payload: DictationCreate, db: Session = Depends(get_db)):
+        if not db.get(Child, payload.child_id):
+            raise HTTPException(status_code=404, detail="Child not found")
+        subject = "\u5916\u8bed"
+        next_order = db.scalar(
+            select(func.coalesce(func.max(HomeworkItem.item_order), -1)).where(
+                HomeworkItem.child_id == payload.child_id,
+                HomeworkItem.date == payload.date,
+                HomeworkItem.subject == subject,
+            )
+        ) + 1
+        subject_order = db.scalar(
+            select(func.coalesce(func.min(HomeworkItem.subject_order), 2)).where(
+                HomeworkItem.child_id == payload.child_id,
+                HomeworkItem.date == payload.date,
+                HomeworkItem.subject == subject,
+            )
+        )
+        item = HomeworkItem(
+            child_id=payload.child_id,
+            date=payload.date,
+            subject=subject,
+            content=payload.title,
+            subject_order=subject_order,
+            item_order=next_order,
+        )
+        assignment = DictationAssignment(title=payload.title, homework_item=item)
+        for index, word_payload in enumerate(payload.words):
+            assignment.words.append(
+                DictationWord(
+                    word=word_payload.word.strip(),
+                    hint=word_payload.hint.strip() if word_payload.hint else None,
+                    audio_path=audio_generator(word_payload.word.strip(), word_payload.hint.strip() if word_payload.hint else None),
+                    word_order=index,
+                )
+            )
+        db.add(item)
+        db.commit()
+        db.refresh(item)
+        return serialize_item(item)
+
     @app.patch("/api/admin/homework/{item_id}", dependencies=[Depends(require_admin)])
     def update_homework(item_id: int, payload: HomeworkUpdate, db: Session = Depends(get_db)):
         item = db.get(HomeworkItem, item_id)
@@ -401,6 +554,13 @@ def create_app(
         db.delete(photo)
         db.commit()
         return {"deleted": True}
+
+    @app.get("/api/dictation/{item_id}/answers")
+    def dictation_answers(item_id: int, db: Session = Depends(get_db)):
+        item = db.get(HomeworkItem, item_id)
+        if not item or not item.dictation:
+            raise HTTPException(status_code=404, detail="Dictation not found")
+        return serialize_dictation(item.dictation, include_answers=True)
 
     @app.get("/api/admin/date", dependencies=[Depends(require_admin)])
     def admin_date(date: DateType, db: Session = Depends(get_db)):

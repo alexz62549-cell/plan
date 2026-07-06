@@ -16,7 +16,12 @@ const dateData: AdminDateResponse = {
   children: children.map((child) => ({ child, subjects: [] }))
 };
 
-function renderManage(childList: Child[], onCreateHomeworks = vi.fn().mockResolvedValue(undefined), planItems: HomeworkItem[] = []) {
+function renderManage(
+  childList: Child[],
+  onCreateHomeworks = vi.fn().mockResolvedValue(undefined),
+  planItems: HomeworkItem[] = [],
+  onCreateDictation = vi.fn().mockResolvedValue(undefined)
+) {
   return render(
     <AdminManage
       children={childList}
@@ -34,6 +39,7 @@ function renderManage(childList: Child[], onCreateHomeworks = vi.fn().mockResolv
       onPreviewImport={vi.fn()}
       onConfirmImport={vi.fn()}
       onCreateHomeworks={onCreateHomeworks}
+      onCreateDictation={onCreateDictation}
       onDeleteHomework={vi.fn()}
       onSetCompleted={vi.fn()}
       onRenameChild={vi.fn()}
@@ -67,6 +73,7 @@ describe('AdminManage', () => {
         onPreviewImport={vi.fn()}
         onConfirmImport={vi.fn()}
         onCreateHomeworks={onCreateHomeworks}
+        onCreateDictation={vi.fn()}
         onDeleteHomework={vi.fn()}
         onSetCompleted={vi.fn()}
         onRenameChild={vi.fn()}
@@ -121,5 +128,26 @@ describe('AdminManage', () => {
     expect(screen.getByText('read')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /\u6807\u8bb0\u5b8c\u6210/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /\u6539\u4e3a\u672a\u5b8c\u6210/ })).not.toBeInTheDocument();
+  });
+
+  it('creates a dictation assignment from pasted words', async () => {
+    const onCreateDictation = vi.fn().mockResolvedValue(undefined);
+    renderManage(children, vi.fn().mockResolvedValue(undefined), [], onCreateDictation);
+
+    await userEvent.click(screen.getByRole('button', { name: /\u4f5c\u4e1a\u8ba1\u5212/ }));
+    await userEvent.clear(screen.getByLabelText(/\u542c\u5199\u6807\u9898/));
+    await userEvent.type(screen.getByLabelText(/\u542c\u5199\u6807\u9898/), '\u82f1\u8bed\u542c\u5199\uff1a\u7b2c1\u7ec4');
+    await userEvent.type(screen.getByLabelText(/\u542c\u5199\u5355\u8bcd/), 'library \u56fe\u4e66\u9986{enter}music room \u97f3\u4e50\u6559\u5ba4');
+    await userEvent.click(screen.getByRole('button', { name: /\u521b\u5efa\u542c\u5199/ }));
+
+    expect(onCreateDictation).toHaveBeenCalledWith({
+      child_id: 1,
+      date: '2026-07-06',
+      title: '\u82f1\u8bed\u542c\u5199\uff1a\u7b2c1\u7ec4',
+      words: [
+        { word: 'library', hint: '\u56fe\u4e66\u9986' },
+        { word: 'music room', hint: '\u97f3\u4e50\u6559\u5ba4' }
+      ]
+    });
   });
 });

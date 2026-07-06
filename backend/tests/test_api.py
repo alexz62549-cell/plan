@@ -210,3 +210,56 @@ def test_admin_can_rename_child(tmp_path):
     assert updated.json()["name"] == "\u5c0f\u660e"
     children = client.get("/api/children").json()
     assert children[0]["name"] == "\u5c0f\u660e"
+
+
+def test_admin_creates_dictation_and_child_fetches_hidden_words_then_answers(tmp_path):
+    generated: list[tuple[str, str | None]] = []
+
+    def fake_audio(word: str, hint: str | None) -> str:
+        generated.append((word, hint))
+        return f"dictation/audio/{word}.mp3"
+
+    app = create_app(
+        database_url=f"sqlite:///{tmp_path / 'test.db'}",
+        upload_dir=tmp_path / "uploads",
+        admin_password="123456",
+        dictation_audio_generator=fake_audio,
+    )
+    client = TestClient(app)
+    child = client.get("/api/children").json()[0]
+
+    created = client.post(
+        "/api/admin/dictation",
+        json={
+            "child_id": child["id"],
+            "date": "2026-07-06",
+            "title": "\u82f1\u8bed\u542c\u5199\uff1a\u7b2c1\u7ec4",
+            "words": [
+                {"word": "library", "hint": "\u56fe\u4e66\u9986"},
+                {"word": "music room", "hint": "\u97f3\u4e50\u6559\u5ba4"},
+            ],
+        },
+        headers={"x-admin-password": "123456"},
+    )
+
+    assert created.status_code == 200
+    assert generated == [("library", "\u56fe\u4e66\u9986"), ("music room", "\u97f3\u4e50\u6559\u5ba4")]
+    item = created.json()
+    assert item["subject"] == "\u5916\u8bed"
+    assert item["dictation"]["title"] == "\u82f1\u8bed\u542c\u5199\uff1a\u7b2c1\u7ec4"
+    assert [word["index"] for word in item["dictation"]["words"]] == [0, 1]
+    assert "word" not in item["dictation"]["words"][0]
+
+    day = client.get("/api/homework", params={"childId": child["id"], "date": "2026-07-06"}).json()
+    dictation_item = day["subjects"][0]["items"][0]
+    assert dictation_item["content"] == "\u82f1\u8bed\u542c\u5199\uff1a\u7b2c1\u7ec4"
+    assert "word" not in dictation_item["dictation"]["words"][0]
+
+    answers = client.get(f"/api/dictation/{dictation_item['id']}/answers").json()
+    assert [
+        {"index": word["index"], "word": word["word"], "hint": word["hint"]}
+        for word in answers["words"]
+    ] == [
+        {"index": 0, "word": "library", "hint": "\u56fe\u4e66\u9986"},
+        {"index": 1, "word": "music room", "hint": "\u97f3\u4e50\u6559\u5ba4"},
+    ]

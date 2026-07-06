@@ -855,13 +855,94 @@ p {
 }
 
 .manual-plan-row input,
-.manual-plan-row select {
+.manual-plan-row select,
+.dictation-form input,
+.dictation-form select,
+.dictation-form textarea {
   width: 100%;
   border: 1px solid #d8e2df;
   border-radius: 8px;
   padding: 10px 12px;
   color: #172121;
   background: #fff;
+}
+
+.dictation-form {
+  display: grid;
+  grid-template-columns: 180px 240px minmax(280px, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.dictation-form label {
+  display: grid;
+  gap: 7px;
+  color: #6b7f7a;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.dictation-form textarea {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.dictation-player {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  border: 1px solid #b7e5db;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f2fbf8;
+}
+
+.dictation-player-head,
+.dictation-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.dictation-player-head {
+  justify-content: space-between;
+}
+
+.dictation-player-head span,
+.dictation-player-head button,
+.dictation-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.dictation-player-head span {
+  color: #0f5f59;
+  font-weight: 800;
+}
+
+.dictation-player-head button,
+.dictation-controls button {
+  border: 1px solid #d8e2df;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #24524d;
+  background: #fff;
+  font-weight: 700;
+}
+
+.dictation-answers {
+  margin: 0;
+  padding-left: 24px;
+  line-height: 1.8;
+}
+
+.dictation-answers span {
+  margin-left: 6px;
+  color: #6b7f7a;
 }
 
 .plan-actions {
@@ -1169,6 +1250,10 @@ p {
 
   .icon-danger-button {
     width: 100%;
+  }
+
+  .dictation-form {
+    grid-template-columns: 1fr;
   }
 
   .row-actions {

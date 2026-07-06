@@ -1,4 +1,4 @@
-import type { Child, HomeworkDay, HomeworkItem } from './domain/types';
+import type { Child, DictationAssignment, HomeworkDay, HomeworkItem } from './domain/types';
 
 export type AdminDateResponse = {
   date: string;
@@ -90,6 +90,21 @@ export const api = {
       headers: adminHeaders(password),
       body: JSON.stringify(payload)
     }),
+  createDictation: (
+    payload: {
+      child_id: number;
+      date: string;
+      title: string;
+      words: Array<{ word: string; hint?: string }>;
+    },
+    password: string
+  ) =>
+    requestJson<HomeworkItem>('/api/admin/dictation', {
+      method: 'POST',
+      headers: adminHeaders(password),
+      body: JSON.stringify(payload)
+    }),
+  dictationAnswers: (itemId: number) => requestJson<DictationAssignment>(`/api/dictation/${itemId}/answers`),
   deleteHomework: (itemId: number, password: string) =>
     requestJson(`/api/admin/homework/${itemId}`, {
       method: 'DELETE',

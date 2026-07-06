@@ -1,8 +1,8 @@
-import { Camera, CalendarDays, ChevronDown, ChevronUp, Image as ImageIcon, Lock, Send, Trash2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Camera, CalendarDays, ChevronDown, ChevronUp, Eye, Image as ImageIcon, Lock, Pause, Play, RotateCcw, Send, SkipBack, SkipForward, Trash2, Volume2 } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
 
 import { splitVisibleAndCompleted, statusText, summarizeHomework } from '../domain/homework';
-import type { Child, HomeworkDay, HomeworkItem, Photo } from '../domain/types';
+import type { Child, DictationAssignment, DictationWord, HomeworkDay, HomeworkItem, Photo } from '../domain/types';
 
 const C = {
   label: '\u6691\u5047\u4f5c\u4e1a',
@@ -19,6 +19,17 @@ const C = {
   pendingPhotos: '\u5f85\u63d0\u4ea4\u7167\u7247',
   locked: '\u5df2\u9501\u5b9a',
   deletePhoto: '\u5220\u9664\u7167\u7247'
+  ,
+  startDictation: '\u5f00\u59cb\u542c\u5199',
+  pauseDictation: '\u6682\u505c',
+  resumeDictation: '\u7ee7\u7eed',
+  replayCurrent: '\u91cd\u64ad\u5f53\u524d',
+  previousWord: '\u4e0a\u4e00\u4e2a',
+  nextWord: '\u4e0b\u4e00\u4e2a',
+  restartDictation: '\u91cd\u65b0\u542c\u5199',
+  showAnswers: '\u663e\u793a\u7b54\u6848',
+  dictationProgress: '\u542c\u5199\u8fdb\u5ea6',
+  dictationNoWords: '\u8fd9\u7ec4\u542c\u5199\u8fd8\u6ca1\u6709\u5355\u8bcd'
 };
 
 type PendingPhoto = {
@@ -37,6 +48,7 @@ type Props = {
   onUpload: (item: HomeworkItem, files: File[]) => Promise<void>;
   onDeletePhoto: (photo: Photo) => void;
   onPreview: (photos: Photo[], index: number, item?: HomeworkItem) => void;
+  onLoadDictationAnswers: (item: HomeworkItem) => Promise<DictationAssignment>;
 };
 
 export function ChildHome({
@@ -49,7 +61,8 @@ export function ChildHome({
   onDateChange,
   onUpload,
   onDeletePhoto,
-  onPreview
+  onPreview,
+  onLoadDictationAnswers
 }: Props) {
   const [completedOpen, setCompletedOpen] = useState(false);
   const [pendingByItem, setPendingByItem] = useState<Record<number, PendingPhoto[]>>({});
@@ -138,6 +151,7 @@ export function ChildHome({
                   onSubmit={submitPending}
                   onDeletePhoto={onDeletePhoto}
                   onPreview={onPreview}
+                  onLoadDictationAnswers={onLoadDictationAnswers}
                 />
               ))}
             </div>
@@ -166,6 +180,7 @@ export function ChildHome({
                   onSubmit={submitPending}
                   onDeletePhoto={onDeletePhoto}
                   onPreview={onPreview}
+                  onLoadDictationAnswers={onLoadDictationAnswers}
                 />
               ))}
             </div>
@@ -184,7 +199,8 @@ function HomeworkCard({
   onRemovePending,
   onSubmit,
   onDeletePhoto,
-  onPreview
+  onPreview,
+  onLoadDictationAnswers
 }: {
   item: HomeworkItem;
   pendingPhotos: PendingPhoto[];
@@ -194,6 +210,7 @@ function HomeworkCard({
   onSubmit: (item: HomeworkItem) => void;
   onDeletePhoto: (photo: Photo) => void;
   onPreview: (photos: Photo[], index: number, item?: HomeworkItem) => void;
+  onLoadDictationAnswers: (item: HomeworkItem) => Promise<DictationAssignment>;
 }) {
   const locked = item.status === 'completed';
 
@@ -229,6 +246,8 @@ function HomeworkCard({
           </label>
         )}
       </div>
+
+      {item.dictation ? <DictationPanel item={item} onLoadAnswers={onLoadDictationAnswers} /> : null}
 
       {pendingPhotos.length > 0 ? (
         <div className="pending-upload-box">
@@ -273,4 +292,129 @@ function HomeworkCard({
       ) : null}
     </article>
   );
+}
+
+function DictationPanel({ item, onLoadAnswers }: { item: HomeworkItem; onLoadAnswers: (item: HomeworkItem) => Promise<DictationAssignment> }) {
+  const dictation = item.dictation;
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [answers, setAnswers] = useState<DictationAssignment | null>(null);
+  const [loadingAnswers, setLoadingAnswers] = useState(false);
+  const playRunRef = useRef(0);
+
+  if (!dictation) return null;
+  const words = dictation.words;
+  const currentWord = words[currentIndex];
+
+  const stopPlayback = () => {
+    playRunRef.current += 1;
+    setPlaying(false);
+  };
+
+  const playWord = async (word: DictationWord, runId: number) => {
+    for (let repeat = 0; repeat < dictation.config.repeat_each_word; repeat += 1) {
+      if (playRunRef.current !== runId) return;
+      await playAudioOrSpeech(word);
+      if (repeat < dictation.config.repeat_each_word - 1) {
+        await wait(dictation.config.pause_between_repeats_ms);
+      }
+    }
+  };
+
+  const startAuto = async (fromIndex = currentIndex) => {
+    const runId = playRunRef.current + 1;
+    playRunRef.current = runId;
+    setPlaying(true);
+    for (let index = fromIndex; index < words.length; index += 1) {
+      if (playRunRef.current !== runId) return;
+      setCurrentIndex(index);
+      await playWord(words[index], runId);
+      if (index < words.length - 1) await wait(dictation.config.pause_between_words_ms);
+    }
+    if (playRunRef.current === runId) setPlaying(false);
+  };
+
+  const replay = async () => {
+    if (!currentWord) return;
+    const runId = playRunRef.current + 1;
+    playRunRef.current = runId;
+    setPlaying(true);
+    await playWord(currentWord, runId);
+    if (playRunRef.current === runId) setPlaying(false);
+  };
+
+  const revealAnswers = async () => {
+    if (answers) return;
+    setLoadingAnswers(true);
+    try {
+      setAnswers(await onLoadAnswers(item));
+    } finally {
+      setLoadingAnswers(false);
+    }
+  };
+
+  return (
+    <div className="dictation-player">
+      <div className="dictation-player-head">
+        <span>
+          <Volume2 size={15} /> {C.dictationProgress} {words.length ? currentIndex + 1 : 0}/{words.length}
+        </span>
+        <button type="button" onClick={revealAnswers} disabled={loadingAnswers}>
+          <Eye size={15} /> {C.showAnswers}
+        </button>
+      </div>
+      {words.length === 0 ? <p className="muted">{C.dictationNoWords}</p> : null}
+      {words.length > 0 ? (
+        <div className="dictation-controls">
+          <button type="button" onClick={() => setCurrentIndex((value) => Math.max(0, value - 1))}>
+            <SkipBack size={15} /> {C.previousWord}
+          </button>
+          {playing ? (
+            <button type="button" onClick={stopPlayback}>
+              <Pause size={15} /> {C.pauseDictation}
+            </button>
+          ) : (
+            <button className="primary-action" type="button" onClick={() => startAuto(currentIndex)}>
+              <Play size={15} /> {C.startDictation}
+            </button>
+          )}
+          <button type="button" onClick={replay}>
+            <Volume2 size={15} /> {C.replayCurrent}
+          </button>
+          <button type="button" onClick={() => setCurrentIndex((value) => Math.min(words.length - 1, value + 1))}>
+            <SkipForward size={15} /> {C.nextWord}
+          </button>
+          <button type="button" onClick={() => startAuto(0)}>
+            <RotateCcw size={15} /> {C.restartDictation}
+          </button>
+        </div>
+      ) : null}
+      {answers ? (
+        <ol className="dictation-answers">
+          {answers.words.map((word) => (
+            <li key={word.index}>
+              <strong>{word.word}</strong>
+              {word.hint ? <span>{word.hint}</span> : null}
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </div>
+  );
+}
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+}
+
+function playAudioOrSpeech(word: DictationWord) {
+  if (word.audio_url) {
+    return new Promise<void>((resolve) => {
+      const audio = new Audio(word.audio_url ?? '');
+      audio.onended = () => resolve();
+      audio.onerror = () => resolve();
+      void audio.play().catch(() => resolve());
+    });
+  }
+  return Promise.resolve();
 }

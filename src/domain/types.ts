@@ -8,6 +8,33 @@ export type Photo = {
   created_at: string;
 };
 
+export type DictationConfig = {
+  repeat_each_word: number;
+  pause_between_repeats_ms: number;
+  pause_between_words_ms: number;
+  play_hint: boolean;
+  hint_before_word: boolean;
+  english_voice: string;
+  chinese_voice: string;
+  english_rate: string;
+  chinese_rate: string;
+  generate_audio_on_save: boolean;
+};
+
+export type DictationWord = {
+  index: number;
+  audio_url: string | null;
+  word?: string;
+  hint?: string | null;
+};
+
+export type DictationAssignment = {
+  id: number;
+  title: string;
+  config: DictationConfig;
+  words: DictationWord[];
+};
+
 export type HomeworkItem = {
   id: number;
   child_id: number;
@@ -21,6 +48,7 @@ export type HomeworkItem = {
   photos: Photo[];
   subject_order: number;
   item_order: number;
+  dictation?: DictationAssignment;
 };
 
 export type HomeworkSubjectGroup = {
