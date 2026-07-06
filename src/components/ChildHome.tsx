@@ -39,6 +39,8 @@ type PendingPhoto = {
   url: string;
 };
 
+let activeSpeechUtterance: SpeechSynthesisUtterance | null = null;
+
 type Props = {
   children: Child[];
   currentChildId: number;
@@ -556,13 +558,37 @@ function playAudioOrSpeech(word: DictationWord) {
   if (word.speech_text && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window) {
     return new Promise<void>((resolve) => {
       const utterance = new SpeechSynthesisUtterance(word.speech_text ?? '');
-      utterance.lang = 'en-US';
+      const voice = chooseDictationVoice();
+      if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
+      } else {
+        utterance.lang = 'en-US';
+      }
       utterance.rate = 0.95;
-      utterance.onend = () => resolve();
-      utterance.onerror = () => resolve();
+      utterance.volume = 1;
+      utterance.onend = () => {
+        activeSpeechUtterance = null;
+        resolve();
+      };
+      utterance.onerror = () => {
+        activeSpeechUtterance = null;
+        resolve();
+      };
       window.speechSynthesis.cancel();
+      activeSpeechUtterance = utterance;
       window.speechSynthesis.speak(utterance);
     });
   }
   return Promise.resolve();
+}
+
+function chooseDictationVoice() {
+  const voices = window.speechSynthesis?.getVoices?.() ?? [];
+  return (
+    voices.find((voice) => voice.lang.toLowerCase().startsWith('en')) ??
+    voices.find((voice) => voice.name.toLowerCase().includes('english')) ??
+    voices[0] ??
+    null
+  );
 }

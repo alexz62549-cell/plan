@@ -170,10 +170,13 @@ describe('ChildHome', () => {
     const speak = vi.fn((utterance: SpeechSynthesisUtterance) => {
       utterance.onend?.(new Event('end') as SpeechSynthesisEvent);
     });
+    const fallbackVoice = { name: 'Microsoft Huihui', lang: 'zh-CN' } as SpeechSynthesisVoice;
     class TestSpeechSynthesisUtterance extends EventTarget {
       text: string;
       lang = '';
       rate = 1;
+      volume = 1;
+      voice: SpeechSynthesisVoice | null = null;
       onend: ((event: SpeechSynthesisEvent) => void) | null = null;
       onerror: ((event: SpeechSynthesisErrorEvent) => void) | null = null;
 
@@ -183,7 +186,7 @@ describe('ChildHome', () => {
       }
     }
     vi.stubGlobal('SpeechSynthesisUtterance', TestSpeechSynthesisUtterance);
-    vi.stubGlobal('speechSynthesis', { cancel: vi.fn(), speak });
+    vi.stubGlobal('speechSynthesis', { cancel: vi.fn(), getVoices: vi.fn(() => [fallbackVoice]), speak });
 
     render(
       <ChildHome
@@ -208,7 +211,7 @@ describe('ChildHome', () => {
     expect(screen.getByText(/\u542c\u5199\u8fdb\u5ea6/)).toBeInTheDocument();
     expect(screen.getByLabelText('\u9009\u62e9\u7167\u7247\u82f1\u8bed\u542c\u5199\uff1a\u7b2c1\u7ec4')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /\u91cd\u64ad\u5f53\u524d/ }));
-    expect(speak).toHaveBeenCalledWith(expect.objectContaining({ text: 'library', lang: 'en-US', rate: 0.95 }));
+    expect(speak).toHaveBeenCalledWith(expect.objectContaining({ text: 'library', lang: 'zh-CN', rate: 0.95, voice: fallbackVoice }));
     await userEvent.click(screen.getByRole('button', { name: /\u663e\u793a\u7b54\u6848/ }));
 
     expect(loadAnswers).toHaveBeenCalledWith(expect.objectContaining({ id: 8 }));
