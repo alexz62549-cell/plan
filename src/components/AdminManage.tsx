@@ -50,6 +50,8 @@ const L = {
   photoUnit: '\u5f20\u7167\u7247'
 };
 
+const SUBJECT_OPTIONS = ['\u8bed\u6587', '\u6570\u5b66', '\u5916\u8bed', '\u5176\u4ed6'];
+
 const sampleJson = JSON.stringify(
   {
     children: [
@@ -75,7 +77,7 @@ function emptyRows(children: Child[], date: string): ManualPlanRow[] {
   return Array.from({ length: 3 }, () => ({
     child_id: children[0]?.id ?? 0,
     date,
-    subject: '\u8bed\u6587',
+    subject: SUBJECT_OPTIONS[0],
     content: ''
   }));
 }
@@ -149,7 +151,7 @@ export function AdminManage({
         ...row,
         child_id: row.child_id || firstChildId,
         date: row.date || date,
-        subject: row.subject || '\u8bed\u6587'
+        subject: SUBJECT_OPTIONS.includes(row.subject) ? row.subject : SUBJECT_OPTIONS[0]
       }))
     );
   }, [children, date]);
@@ -284,7 +286,13 @@ export function AdminManage({
                       ))}
                     </select>
                     <input type="date" value={row.date} onChange={(event) => updateRow(index, { date: event.target.value })} />
-                    <input value={row.subject} placeholder={L.subject} onChange={(event) => updateRow(index, { subject: event.target.value })} />
+                    <select aria-label={`${L.subject}${index + 1}`} value={row.subject} onChange={(event) => updateRow(index, { subject: event.target.value })}>
+                      {SUBJECT_OPTIONS.map((subject) => (
+                        <option value={subject} key={subject}>
+                          {subject}
+                        </option>
+                      ))}
+                    </select>
                     <input value={row.content} placeholder={L.content} onChange={(event) => updateRow(index, { content: event.target.value })} />
                     <button className="icon-danger-button" type="button" onClick={() => removeRow(index)} aria-label={`${L.delete}${index + 1}`}>
                       <Trash2 size={16} />
@@ -293,7 +301,7 @@ export function AdminManage({
                 ))}
               </div>
               <div className="plan-actions">
-                <button type="button" onClick={() => setManualRows((rows) => [...rows, { ...(emptyRows(children, date)[0] ?? { child_id: children[0]?.id ?? 0, date, subject: '\u8bed\u6587', content: '' }), date }])}>
+                <button type="button" onClick={() => setManualRows((rows) => [...rows, { ...(emptyRows(children, date)[0] ?? { child_id: children[0]?.id ?? 0, date, subject: SUBJECT_OPTIONS[0], content: '' }), date }])}>
                   <Plus size={16} /> {L.addRow}
                 </button>
                 <button type="button" onClick={() => setManualRows(emptyRows(children, date))}>

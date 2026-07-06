@@ -82,4 +82,18 @@ describe('AdminManage', () => {
       { child_id: 1, date: '2026-07-06', subject: '\u8bed\u6587', content: '123' }
     ]);
   });
+
+  it('saves the selected subject option for manual rows', async () => {
+    const onCreateHomeworks = vi.fn().mockResolvedValue(undefined);
+    renderManage(children, onCreateHomeworks);
+
+    await userEvent.click(screen.getByRole('button', { name: /\u4f5c\u4e1a\u8ba1\u5212/ }));
+    await userEvent.selectOptions(screen.getAllByLabelText(/\u5b66\u79d1/)[0], '\u5916\u8bed');
+    await userEvent.type(screen.getAllByPlaceholderText('\u4f5c\u4e1a\u5185\u5bb9')[0], 'listen');
+    await userEvent.click(screen.getByRole('button', { name: /\u6279\u91cf\u6dfb\u52a0/ }));
+
+    expect(onCreateHomeworks).toHaveBeenCalledWith([
+      { child_id: 1, date: '2026-07-06', subject: '\u5916\u8bed', content: 'listen' }
+    ]);
+  });
 });
